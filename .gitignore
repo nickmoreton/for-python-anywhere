@@ -10,3 +10,6 @@ wheels/
 .venv
 db.sqlite3
 media/
+
+# Isolated feature worktrees
+.worktrees/
