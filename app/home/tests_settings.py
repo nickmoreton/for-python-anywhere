@@ -7,9 +7,14 @@ from django.test import SimpleTestCase
 class EnvironmentSettingsTests(SimpleTestCase):
     def test_mysql_settings_match_environment(self):
         database = settings.DATABASES["default"]
+        expected_name = os.environ["MYSQL_DATABASE"]
 
         self.assertEqual(database["ENGINE"], "django.db.backends.mysql")
-        self.assertEqual(database["NAME"], os.environ["MYSQL_DATABASE"])
+        # Django prefixes NAME while a database-backed test suite is running.
+        if database["NAME"].startswith("test_"):
+            self.assertEqual(database["NAME"], f"test_{expected_name}")
+        else:
+            self.assertEqual(database["NAME"], expected_name)
         self.assertEqual(database["USER"], os.environ["MYSQL_USER"])
         self.assertEqual(database["PASSWORD"], os.environ["MYSQL_PASSWORD"])
         self.assertEqual(database["HOST"], os.environ["MYSQL_HOST"])

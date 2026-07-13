@@ -4,6 +4,7 @@ FROM python:3.13-slim-bookworm AS builder
 
 RUN apt-get update --yes --quiet && apt-get install --yes --quiet --no-install-recommends \
     build-essential \
+    pkg-config \
     libpq-dev \
     libmariadb-dev \
     libjpeg62-turbo-dev \
@@ -43,12 +44,11 @@ COPY --from=builder /opt/venv /opt/venv
 
 WORKDIR /app
 
-RUN chown wagtail:wagtail /app
+RUN mkdir -p /app/media /app/staticfiles \
+ && chown -R wagtail:wagtail /app
 
 COPY --chown=wagtail:wagtail . .
 
 USER wagtail
 
-RUN python manage.py collectstatic --noinput --clear
-
-CMD set -xe; python manage.py migrate --noinput; gunicorn app.wsgi:application
+CMD ["gunicorn", "app.wsgi:application"]
