@@ -4,7 +4,7 @@
 
 Provide a manually triggered GitHub Actions deployment for the Wagtail site on a paid PythonAnywhere account. Local development will use Docker Compose, while PythonAnywhere will run the application directly from a Python 3.13 virtual environment managed by UV.
 
-The local, CI, and production environments will share Python 3.13, Django/Wagtail application versions, MySQL, the same settings contract, and the same migration and static-file commands. Docker remains a local-development tool and is not used on PythonAnywhere.
+The local, CI, and production environments will share Python 3.13, one `pyproject.toml`/`uv.lock` dependency source, MySQL, the same settings contract, and the same migration and static-file commands. Docker remains a local-development tool and is not used on PythonAnywhere.
 
 ## Scope
 
@@ -31,7 +31,7 @@ Docker Compose runs two services:
 
 The web service bind-mounts the source tree for development and uses persistent media storage. It waits for MySQL to become healthy, applies migrations, collects static files, and starts the Django development server. Local developers copy `.env.example` to the ignored `.env` file before starting Compose.
 
-The container dependency path remains based on `requirements.txt`, distinct from host-side UV dependency management as required by the repository workflow. Both dependency declarations will contain the MySQL driver and compatible Django/Wagtail constraints.
+The Docker image installs UV from its official container image and runs `uv sync --locked` against the repository's `pyproject.toml` and `uv.lock`. The redundant `requirements.txt` file is removed so local Docker, host development, CI, and PythonAnywhere cannot drift between dependency sources.
 
 ### GitHub Actions
 
@@ -44,7 +44,7 @@ The workflow explicitly checks out and deploys `origin/main`, regardless of whic
 3. Run the Django test suite.
 4. Run `makemigrations --check --dry-run`.
 
-If validation succeeds, the runner connects to PythonAnywhere using OpenSSH and invokes the repository-owned deployment script. The workflow avoids a third-party SSH action.
+If validation succeeds, the runner passes the validated commit SHA to PythonAnywhere over OpenSSH and invokes the repository-owned deployment script. The script refuses to deploy if `origin/main` no longer equals that SHA, ensuring that the tested revision is the deployed revision. The workflow avoids a third-party SSH action.
 
 ### PythonAnywhere
 
@@ -82,7 +82,7 @@ The remote script uses strict shell error handling and performs these steps:
 1. Acquire a non-blocking deployment lock so overlapping runs cannot modify the checkout or database.
 2. Change to the configured repository directory.
 3. Verify that required production configuration is present and that the checkout has no unexpected tracked changes.
-4. Fetch `origin/main` and verify that the current checkout can be fast-forwarded.
+4. Fetch `origin/main`, verify that it still equals the commit validated by GitHub Actions, and verify that the current checkout can be fast-forwarded.
 5. Create a timestamped MySQL dump and retain the five most recent deployment backups.
 6. Fast-forward the checkout to `origin/main` without merges or destructive resets.
 7. Run `uv sync --locked` with Python 3.13.
@@ -117,4 +117,4 @@ Implementation is complete when all of the following pass:
 
 ## Documentation Impact
 
-The implementation changes the documented Python version, dependency handling, local startup commands, database configuration, and deployment workflow. `README.md` should document developer setup and deployment operation. Because the repository workflow changes materially, the user should also update `AGENTS.md`; editing that file requires explicit authorization beyond this design.
+The implementation changes the documented Python version, dependency handling, local startup commands, database configuration, and deployment workflow. `README.md` will document developer setup and deployment operation. The user explicitly authorized updating `AGENTS.md` in the same change so the repository guide describes UV as the single dependency source, Docker Compose development, and the GitHub Actions/PythonAnywhere workflow.
