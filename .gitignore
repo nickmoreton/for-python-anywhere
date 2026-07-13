@@ -13,3 +13,7 @@ media/
 
 # Isolated feature worktrees
 .worktrees/
+
+# Environment and generated static files
+.env
+staticfiles/
