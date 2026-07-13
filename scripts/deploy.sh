@@ -37,7 +37,8 @@ test -x .venv/bin/python
 test -f "$HOME/.my.cnf"
 test -f "$wsgi_file"
 
-if [[ -n $(git status --porcelain --untracked-files=no) ]]; then
+tracked_changes=$(git status --porcelain --untracked-files=no)
+if [[ -n "$tracked_changes" ]]; then
     echo "Tracked files contain local changes; refusing to deploy." >&2
     exit 65
 fi
@@ -61,19 +62,32 @@ database_name=$(
 
 mkdir -p "$backup_dir"
 backup_file="$backup_dir/$(date -u +%Y%m%dT%H%M%SZ).sql.gz"
+backup_temp=$(mktemp "$backup_dir/.backup.XXXXXXXXXX.tmp")
+cleanup_backup() {
+    rm -f -- "$backup_temp"
+}
+trap cleanup_backup EXIT
 mysqldump \
     --defaults-extra-file="$HOME/.my.cnf" \
     --single-transaction \
     --no-tablespaces \
     --routines \
     --triggers \
-    "$database_name" | gzip -9 > "$backup_file"
+    "$database_name" | gzip -9 > "$backup_temp"
+mv -- "$backup_temp" "$backup_file"
+trap - EXIT
 
-mapfile -t backups < <(
+backup_list=$(
     find "$backup_dir" -type f -name '*.sql.gz' -printf '%T@ %p\n' \
         | sort -nr \
         | cut -d' ' -f2-
 )
+backups=()
+if [[ -n "$backup_list" ]]; then
+    while IFS= read -r backup; do
+        backups+=("$backup")
+    done <<< "$backup_list"
+fi
 if (( ${#backups[@]} > 5 )); then
     rm -- "${backups[@]:5}"
 fi
