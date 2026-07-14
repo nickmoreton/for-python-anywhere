@@ -1,0 +1,77 @@
+name: Feature Branch CI
+
+on:
+  push:
+    branches-ignore:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_DATABASE: wagtail
+          MYSQL_PASSWORD: wagtail
+          MYSQL_ROOT_PASSWORD: root-password
+          MYSQL_USER: wagtail
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -u root -proot-password"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    env:
+      DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1
+      DJANGO_CSRF_TRUSTED_ORIGINS: http://localhost:8000
+      DJANGO_DEBUG: "false"
+      DJANGO_SECRET_KEY: ci-validation-secret-key-with-at-least-fifty-characters
+      MYSQL_DATABASE: wagtail
+      MYSQL_HOST: 127.0.0.1
+      MYSQL_PASSWORD: wagtail
+      MYSQL_PORT: "3306"
+      MYSQL_USER: wagtail
+      WAGTAILADMIN_BASE_URL: http://localhost:8000
+    steps:
+      - name: Check out pushed commit
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Set up UV
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.11.28"
+
+      - name: Synchronize dependencies
+        run: uv sync --locked --python 3.13
+
+      - name: Run Django checks
+        run: uv run python manage.py check --settings=app.settings.production
+
+      - name: Grant test database privileges
+        env:
+          MYSQL_ROOT_PASSWORD: root-password
+        run: |
+          docker exec --env MYSQL_PWD="$MYSQL_ROOT_PASSWORD" \
+            "${{ job.services.mysql.id }}" \
+            mysql --user=root \
+            --execute="GRANT ALL PRIVILEGES ON \`test_wagtail\`.* TO 'wagtail'@'%';"
+
+      - name: Run tests
+        run: uv run python manage.py test
+
+      - name: Check migration drift
+        run: uv run python manage.py makemigrations --check --dry-run
