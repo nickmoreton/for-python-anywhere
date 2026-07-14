@@ -74,9 +74,10 @@ chmod 600 .env
 
 Edit `.env` on PythonAnywhere. Set `DJANGO_DEBUG=false`, use a new production-only `DJANGO_SECRET_KEY`, set the PythonAnywhere domain in `DJANGO_ALLOWED_HOSTS`, `DJANGO_CSRF_TRUSTED_ORIGINS`, and `WAGTAILADMIN_BASE_URL`, and enter the recorded production database values. Do not retain the local example passwords. `MYSQL_ROOT_PASSWORD` is used only by the local Compose database and is not required by the production Django application.
 
-Create the permission-restricted MySQL client file used for backups from Django's parsed production settings:
+In a PythonAnywhere Bash console, after configuring `.env` and creating `.venv`, run the following from the repository root. It creates the permission-restricted `~/.my.cnf` file used by backup and restore commands, using the production database credentials loaded by Django:
 
 ```bash
+cd "$HOME/for-python-anywhere"
 DJANGO_SETTINGS_MODULE=app.settings.production .venv/bin/python <<'PY'
 from pathlib import Path
 
