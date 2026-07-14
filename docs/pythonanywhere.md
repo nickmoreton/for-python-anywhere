@@ -143,7 +143,7 @@ chmod 600 "$HOME/.ssh/authorized_keys"
 printf '%s\n' 'paste the complete pythonanywhere-deploy.pub line here' >> "$HOME/.ssh/authorized_keys"
 ```
 
-Store the complete contents of `pythonanywhere-deploy` in the GitHub secret `PYTHONANYWHERE_SSH_PRIVATE_KEY`. Never commit either key. Keep the local files until the public key has been added to PythonAnywhere, the private key has been saved in GitHub, and a deployment has succeeded. You may then remove the local copies from the trusted machine:
+In the GitHub repository, open **Settings > Secrets and variables > Actions**. On the **Secrets** tab, under **Repository secrets**, select **New repository secret** and store the complete contents of `pythonanywhere-deploy` as `PYTHONANYWHERE_SSH_PRIVATE_KEY`. Never commit either key. Keep the local files until the public key has been added to PythonAnywhere, the private key has been saved in GitHub, and a deployment has succeeded. You may then remove the local copies from the trusted machine:
 
 ```bash
 rm -- pythonanywhere-deploy pythonanywhere-deploy.pub
@@ -155,7 +155,7 @@ For a private repository, the separate read-only GitHub deploy key configured du
 
 ## GitHub variables
 
-Configure these GitHub Actions variables:
+In the GitHub repository, open **Settings > Secrets and variables > Actions**, then select the **Variables** tab. Under **Repository variables**, select **New repository variable** and add each variable below separately. Do not add them under **Settings > Environments**: the deployment workflow does not declare a GitHub environment, so environment-level variables are not available to it.
 
 - `PYTHONANYWHERE_HOST`: `ssh.pythonanywhere.com` for a US account or `ssh.eu.pythonanywhere.com` for an EU account.
 - `PYTHONANYWHERE_USERNAME`: the PythonAnywhere account username.
