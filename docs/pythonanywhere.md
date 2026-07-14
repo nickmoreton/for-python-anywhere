@@ -89,6 +89,7 @@ client_file.write_text(
     f"user={database['USER']}\n"
     f"password={database['PASSWORD']}\n"
     f"host={database['HOST']}\n"
+    f"port={database['PORT']}\n"
 )
 client_file.chmod(0o600)
 PY
