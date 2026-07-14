@@ -1,0 +1,129 @@
+name: Deploy to PythonAnywhere
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pythonanywhere-production
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    outputs:
+      commit: ${{ steps.commit.outputs.sha }}
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_DATABASE: wagtail
+          MYSQL_PASSWORD: wagtail
+          MYSQL_ROOT_PASSWORD: root-password
+          MYSQL_USER: wagtail
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -u root -proot-password"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    env:
+      DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1
+      DJANGO_CSRF_TRUSTED_ORIGINS: http://localhost:8000
+      DJANGO_DEBUG: "false"
+      DJANGO_SECRET_KEY: ci-validation-secret-key-with-at-least-fifty-characters
+      MYSQL_DATABASE: wagtail
+      MYSQL_HOST: 127.0.0.1
+      MYSQL_PASSWORD: wagtail
+      MYSQL_PORT: "3306"
+      MYSQL_USER: wagtail
+      WAGTAILADMIN_BASE_URL: http://localhost:8000
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Capture validated commit
+        id: commit
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Set up UV
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.11.28"
+
+      - name: Synchronize dependencies
+        run: uv sync --locked --python 3.13
+
+      - name: Run Django checks
+        run: uv run python manage.py check --settings=app.settings.production
+
+      - name: Grant test database privileges
+        env:
+          MYSQL_ROOT_PASSWORD: root-password
+        run: |
+          docker exec --env MYSQL_PWD="$MYSQL_ROOT_PASSWORD" \
+            "${{ job.services.mysql.id }}" \
+            mysql --user=root \
+            --execute="GRANT ALL PRIVILEGES ON \`test_wagtail\`.* TO 'wagtail'@'%';"
+
+      - name: Run tests
+        run: uv run python manage.py test
+
+      - name: Check migration drift
+        run: uv run python manage.py makemigrations --check --dry-run
+
+  deploy:
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.PYTHONANYWHERE_SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ vars.PYTHONANYWHERE_KNOWN_HOSTS }}
+        run: |
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/pythonanywhere
+          chmod 600 ~/.ssh/pythonanywhere
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Deploy origin/main
+        env:
+          PA_HOST: ${{ vars.PYTHONANYWHERE_HOST }}
+          PA_REPO_PATH: ${{ vars.PYTHONANYWHERE_REPO_PATH }}
+          PA_USERNAME: ${{ vars.PYTHONANYWHERE_USERNAME }}
+          PA_WSGI_FILE: ${{ vars.PYTHONANYWHERE_WSGI_FILE }}
+          VALIDATED_COMMIT: ${{ needs.validate.outputs.commit }}
+        run: |
+          ssh -i ~/.ssh/pythonanywhere \
+            -o BatchMode=yes \
+            -o StrictHostKeyChecking=yes \
+            "$PA_USERNAME@$PA_HOST" \
+            "bash '$PA_REPO_PATH/scripts/deploy.sh' '$PA_REPO_PATH' '$PA_WSGI_FILE' '$VALIDATED_COMMIT'"
+
+      - name: Verify the public site
+        env:
+          PA_DOMAIN: ${{ vars.PYTHONANYWHERE_DOMAIN }}
+        run: |
+          for attempt in {1..12}; do
+            status=$(curl --silent --show-error --output /dev/null \
+              --write-out '%{http_code}' "https://$PA_DOMAIN/" || true)
+            if [[ "$status" =~ ^[0-9]+$ ]] && (( status >= 200 && status < 400 )); then
+              echo "Health check passed with HTTP $status."
+              exit 0
+            fi
+            echo "Attempt $attempt returned HTTP ${status:-none}; retrying."
+            sleep 5
+          done
+          echo "The site did not become healthy after 12 attempts." >&2
+          exit 1
