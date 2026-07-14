@@ -61,8 +61,8 @@ database_name=$(
 )
 
 mkdir -p "$backup_dir"
-backup_file="$backup_dir/$(date -u +%Y%m%dT%H%M%SZ).sql.gz"
 backup_temp=$(mktemp "$backup_dir/.backup.XXXXXXXXXX.tmp")
+backup_file="$backup_dir/$(date -u +%Y%m%dT%H%M%S%NZ)-$$.sql.gz"
 cleanup_backup() {
     rm -f -- "$backup_temp"
 }
@@ -74,11 +74,12 @@ mysqldump \
     --routines \
     --triggers \
     "$database_name" | gzip -9 > "$backup_temp"
-mv -- "$backup_temp" "$backup_file"
+ln -- "$backup_temp" "$backup_file"
+rm -- "$backup_temp"
 trap - EXIT
 
 backup_list=$(
-    find "$backup_dir" -type f -name '*.sql.gz' -printf '%T@ %p\n' \
+    find "$backup_dir" -maxdepth 1 -type f -name '*.sql.gz' -printf '%T@ %p\n' \
         | sort -nr \
         | cut -d' ' -f2-
 )

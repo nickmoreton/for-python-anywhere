@@ -21,6 +21,8 @@ make_command() {
 }
 
 setup_case() {
+    GIT_STATUS_EXIT=0
+    MYSQLDUMP_EXIT=0
     case_dir=$(mktemp -d)
     home=$case_dir/home
     repository=$case_dir/repository
@@ -113,6 +115,54 @@ test_failed_backup_preserves_final() {
     echo "PASS: $failed_command failure preserves final backup and removes temp file"
 }
 
+test_backup_publication_collision_aborts() {
+    setup_case
+    backup_dir=$home/mysql-backups/for-python-anywhere
+    mkdir -p "$backup_dir"
+    make_command "$bin/date" 'printf "%s\n" 20260713T120000000000000Z'
+    make_command "$bin/ln" \
+        'for target do :; done' \
+        'printf "%s\n" valid-existing-backup > "$target"' \
+        '/bin/ln "$@"'
+
+    run_deploy
+    [[ $status != 0 ]] || fail "backup publication collision unexpectedly succeeded: $output"
+    final_backup=$(find "$backup_dir" -maxdepth 1 -type f -name '*.sql.gz' -print -quit)
+    [[ -n "$final_backup" ]] || fail "collision test did not create the competing backup"
+    [[ $(<"$final_backup") == valid-existing-backup ]] || fail "collision replaced the valid backup"
+    ! grep -q 'git merge --ff-only' "$log" || fail "deployment merged after backup collision"
+    if find "$backup_dir" -maxdepth 1 -type f -name '.backup.*.tmp' | grep -q .; then
+        fail "backup collision left a temporary backup"
+    fi
+    rm -rf "$case_dir"
+    echo "PASS: backup publication collision aborts without overwriting"
+}
+
+test_retention_stays_at_backup_root() {
+    setup_case
+    backup_dir=$home/mysql-backups/for-python-anywhere
+    nested_dir=$backup_dir/nested
+    mkdir -p "$nested_dir"
+    for index in 1 2 3 4 5 6; do
+        printf '%s\n' "root-$index" > "$backup_dir/root-$index.sql.gz"
+    done
+    printf '%s\n' nested > "$nested_dir/nested.sql.gz"
+    make_command "$bin/find" \
+        '[[ " $* " == *" -maxdepth 1 "* ]] || exit 48' \
+        'order=1' \
+        'for backup in "$1"/*.sql.gz; do' \
+        '    [[ -e "$backup" ]] && printf "%s %s\n" "$((order++))" "$backup"' \
+        'done'
+
+    run_deploy
+    [[ $status == 0 ]] || fail "retention-scope deployment returned $status: $output"
+    [[ -f "$nested_dir/nested.sql.gz" ]] || fail "retention deleted a nested backup"
+    root_count=$(find "$backup_dir" -maxdepth 1 -type f -name '*.sql.gz' | wc -l)
+    (( root_count == 5 )) || fail "retention kept $root_count root backups instead of 5"
+    rm -rf "$case_dir"
+    echo "PASS: retention only removes backups at the backup directory root"
+}
+
 case ${1:-all} in
     git-status) test_git_status_failure_aborts ;;
     retention-find) test_retention_pipeline_failure_aborts find 43 ;;
@@ -120,6 +170,8 @@ case ${1:-all} in
     retention-cut) test_retention_pipeline_failure_aborts cut 47 ;;
     gzip) test_failed_backup_preserves_final gzip 44 ;;
     mysqldump) test_failed_backup_preserves_final mysqldump 45 ;;
+    collision) test_backup_publication_collision_aborts ;;
+    retention-scope) test_retention_stays_at_backup_root ;;
     all)
         test_git_status_failure_aborts
         test_retention_pipeline_failure_aborts find 43
@@ -127,6 +179,8 @@ case ${1:-all} in
         test_retention_pipeline_failure_aborts cut 47
         test_failed_backup_preserves_final gzip 44
         test_failed_backup_preserves_final mysqldump 45
+        test_backup_publication_collision_aborts
+        test_retention_stays_at_backup_root
         ;;
     *) fail "unknown test: $1" ;;
 esac

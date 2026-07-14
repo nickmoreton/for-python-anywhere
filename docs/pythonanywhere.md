@@ -133,7 +133,16 @@ Create a dedicated deployment key on a trusted local machine. The empty passphra
 ssh-keygen -t ed25519 -N '' -f pythonanywhere-deploy -C github-actions-pythonanywhere
 ```
 
-Append `pythonanywhere-deploy.pub` to `~/.ssh/authorized_keys` on PythonAnywhere. Store the complete contents of `pythonanywhere-deploy` in the GitHub secret `PYTHONANYWHERE_SSH_PRIVATE_KEY`. Never commit either key.
+On PythonAnywhere, create the SSH directory and authorized-keys file with restricted permissions, then append the complete single line from `pythonanywhere-deploy.pub`:
+
+```bash
+install -d -m 700 "$HOME/.ssh"
+touch "$HOME/.ssh/authorized_keys"
+chmod 600 "$HOME/.ssh/authorized_keys"
+printf '%s\n' 'paste the complete pythonanywhere-deploy.pub line here' >> "$HOME/.ssh/authorized_keys"
+```
+
+Store the complete contents of `pythonanywhere-deploy` in the GitHub secret `PYTHONANYWHERE_SSH_PRIVATE_KEY`. Never commit either key. This dedicated key authorizes a normal PythonAnywhere shell login; it is not restricted to the deployment script. Protect the GitHub secret accordingly, remove the matching `authorized_keys` line immediately if exposure is suspected, and generate and install a replacement key. A forced-command wrapper is not documented because it would need to parse and validate the workflow's path arguments and exact-SHA argument, adding a second brittle deployment interface.
 
 For a private repository, the separate read-only GitHub deploy key configured during one-time setup lets `git fetch origin main` work without reusing this Actions deployment key.
 
@@ -167,6 +176,13 @@ When an operator has explicitly decided that a database restore is required, dis
 ```bash
 set -euo pipefail
 
+lock_file=$HOME/.for-python-anywhere-deploy.lock
+exec 9>"$lock_file"
+if ! flock -n 9; then
+  echo "A deployment or database restore is already running; restore aborted." >&2
+  exit 75
+fi
+
 cd "$HOME/for-python-anywhere"
 backup_dir="$HOME/mysql-backups/for-python-anywhere"
 find "$backup_dir" -maxdepth 1 -type f -name '*.sql.gz' -print | sort
@@ -196,6 +212,10 @@ database_name=$(
 )
 gunzip -c "$backup_file" \
   | mysql --defaults-extra-file="$HOME/.my.cnf" "$database_name"
+
+uv run python manage.py check --deploy --settings=app.settings.production
+uv run python manage.py migrate --plan --settings=app.settings.production
+flock -u 9
 ```
 
-Re-enable and reload the web app only after checking migrations and application compatibility.
+Review the migration plan and confirm application compatibility with the restored schema before re-enabling and reloading the web app. The restore holds the same nonblocking lock as `scripts/deploy.sh` through both documented compatibility checks, so a deployment cannot start during the destructive operation.

@@ -105,11 +105,16 @@ jobs:
           PA_WSGI_FILE: ${{ vars.PYTHONANYWHERE_WSGI_FILE }}
           VALIDATED_COMMIT: ${{ needs.validate.outputs.commit }}
         run: |
+          printf -v remote_command 'bash %q %q %q %q' \
+            "$PA_REPO_PATH/scripts/deploy.sh" \
+            "$PA_REPO_PATH" \
+            "$PA_WSGI_FILE" \
+            "$VALIDATED_COMMIT"
           ssh -i ~/.ssh/pythonanywhere \
             -o BatchMode=yes \
             -o StrictHostKeyChecking=yes \
             "$PA_USERNAME@$PA_HOST" \
-            "bash '$PA_REPO_PATH/scripts/deploy.sh' '$PA_REPO_PATH' '$PA_WSGI_FILE' '$VALIDATED_COMMIT'"
+            "$remote_command"
 
       - name: Verify the public site
         env:
