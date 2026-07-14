@@ -143,7 +143,13 @@ chmod 600 "$HOME/.ssh/authorized_keys"
 printf '%s\n' 'paste the complete pythonanywhere-deploy.pub line here' >> "$HOME/.ssh/authorized_keys"
 ```
 
-Store the complete contents of `pythonanywhere-deploy` in the GitHub secret `PYTHONANYWHERE_SSH_PRIVATE_KEY`. Never commit either key. This dedicated key authorizes a normal PythonAnywhere shell login; it is not restricted to the deployment script. Protect the GitHub secret accordingly, remove the matching `authorized_keys` line immediately if exposure is suspected, and generate and install a replacement key. A forced-command wrapper is not documented because it would need to parse and validate the workflow's path arguments and exact-SHA argument, adding a second brittle deployment interface.
+Store the complete contents of `pythonanywhere-deploy` in the GitHub secret `PYTHONANYWHERE_SSH_PRIVATE_KEY`. Never commit either key. Keep the local files until the public key has been added to PythonAnywhere, the private key has been saved in GitHub, and a deployment has succeeded. You may then remove the local copies from the trusted machine:
+
+```bash
+rm -- pythonanywhere-deploy pythonanywhere-deploy.pub
+```
+
+Deleting these local files does not revoke the deployment key: GitHub retains the private key in the Actions secret and PythonAnywhere retains the public key in `~/.ssh/authorized_keys`. If the GitHub secret must be recreated later, generate and install a new key pair. This dedicated key authorizes a normal PythonAnywhere shell login; it is not restricted to the deployment script. Protect the GitHub secret accordingly, remove the matching `authorized_keys` line immediately if exposure is suspected, and generate and install a replacement key. A forced-command wrapper is not documented because it would need to parse and validate the workflow's path arguments and exact-SHA argument, adding a second brittle deployment interface.
 
 For a private repository, the separate read-only GitHub deploy key configured during one-time setup lets `git fetch origin main` work without reusing this Actions deployment key.
 
@@ -156,7 +162,40 @@ Configure these GitHub Actions variables:
 - `PYTHONANYWHERE_REPO_PATH`: the absolute path printed by `echo "$HOME/for-python-anywhere"` on PythonAnywhere.
 - `PYTHONANYWHERE_WSGI_FILE`: the absolute WSGI file path shown in the PythonAnywhere Web tab.
 - `PYTHONANYWHERE_DOMAIN`: the public domain without `https://` or a trailing slash.
-- `PYTHONANYWHERE_KNOWN_HOSTS`: the verified known-hosts line for the selected SSH hostname. Obtain the current host key and verify its fingerprint through a trusted PythonAnywhere source before saving it; do not trust an unverified key captured during a deployment. The workflow writes this value to `~/.ssh/known_hosts` and connects with `StrictHostKeyChecking=yes`.
+- `PYTHONANYWHERE_KNOWN_HOSTS`: the complete, verified SSH host-key line obtained using the procedure below. This is not the shorter SHA-256 fingerprint.
+
+On a trusted local machine, set `host` to the same hostname used for `PYTHONANYWHERE_HOST`, then capture the current RSA host key in a temporary file:
+
+```bash
+# Use ssh.pythonanywhere.com for a US account.
+host=ssh.eu.pythonanywhere.com
+candidate_file=$(mktemp)
+ssh-keyscan -T 10 -t rsa "$host" 2>/dev/null \
+  | awk '!/^#/ && NF' \
+  | sort -u > "$candidate_file"
+```
+
+Display the captured key's SHA-256 fingerprint:
+
+```bash
+ssh-keygen -lf "$candidate_file" -E sha256
+```
+
+Compare that fingerprint with the one published on PythonAnywhere's official [SSH Access](https://help.pythonanywhere.com/pages/SSHAccess) page, reached through a separate trusted browser connection. Stop if they do not match. `ssh-keyscan` retrieves a key but does not prove that it is authentic; the comparison provides that verification.
+
+After the fingerprint matches, display the complete host-key line:
+
+```bash
+cat "$candidate_file"
+```
+
+Copy the entire line, beginning with the selected SSH hostname, into the GitHub Actions variable `PYTHONANYWHERE_KNOWN_HOSTS`; do not copy only the fingerprint. Then remove the temporary file:
+
+```bash
+rm -f "$candidate_file"
+```
+
+The deployment workflow writes this value to `~/.ssh/known_hosts` and connects with `StrictHostKeyChecking=yes`.
 
 ## Deploying
 
