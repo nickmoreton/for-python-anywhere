@@ -1,0 +1,41 @@
+services:
+  db:
+    image: mysql:8.0
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_USER: ${MYSQL_USER}
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping --protocol=tcp -h 127.0.0.1 -u root -p$${MYSQL_ROOT_PASSWORD}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./scripts/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh:ro
+
+  web:
+    build:
+      context: .
+    init: true
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+    command: /app/scripts/start-dev.sh
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+      - media:/app/media
+      - staticfiles:/app/staticfiles
+
+volumes:
+  media:
+  mysql-data:
+  staticfiles:
