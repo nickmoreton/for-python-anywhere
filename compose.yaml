@@ -1,4 +1,13 @@
 services:
+  assets:
+    image: node:24.18.0-bookworm-slim
+    init: true
+    working_dir: /app
+    command: sh -c "npm ci && npm run dev"
+    volumes:
+      - .:/app
+      - node-modules:/app/node_modules
+
   db:
     image: mysql:8.0
     restart: unless-stopped
@@ -38,4 +47,5 @@ services:
 volumes:
   media:
   mysql-data:
+  node-modules:
   staticfiles:
