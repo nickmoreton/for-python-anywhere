@@ -17,3 +17,8 @@ media/
 # Environment and generated static files
 .env
 staticfiles/
+
+# Node dependencies and generated frontend assets
+node_modules/
+app/static/css/app.css
+app/static/js/app.js

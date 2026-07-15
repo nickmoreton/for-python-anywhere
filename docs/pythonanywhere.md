@@ -9,6 +9,14 @@ python3.13 --version
 uv --version
 ```
 
+Install NVM in the path used by the noninteractive deployment script. Skip the clone command when `$HOME/nvm/nvm.sh` already exists:
+
+```bash
+git clone --depth 1 https://github.com/nvm-sh/nvm.git "$HOME/nvm"
+export NVM_DIR="$HOME/nvm"
+source "$NVM_DIR/nvm.sh"
+```
+
 Before cloning a private repository, create a repository-only SSH key on PythonAnywhere with an empty passphrase:
 
 ```bash
@@ -60,6 +68,22 @@ cd "$HOME/for-python-anywhere"
 uv sync --locked --python 3.13
 ```
 
+After cloning the repository, install its pinned Node version and make it the default for interactive consoles:
+
+```bash
+cd "$HOME/for-python-anywhere"
+export NVM_DIR="$HOME/nvm"
+source "$NVM_DIR/nvm.sh"
+nvm install
+nvm alias default "$(cat .nvmrc)"
+node --version
+npm --version
+npm ci
+npm run build
+```
+
+`node --version` must print `v24.18.0`. The deployment script sources NVM explicitly because the GitHub-triggered SSH command runs a noninteractive shell and does not rely on `.bashrc`.
+
 For a public repository, no GitHub deploy key is needed: use `git clone https://github.com/nickmoreton/for-python-anywhere.git` instead. The trusted-host and SSH configuration above are required for the private-repository SSH path.
 
 Before configuring `.env` or running migrations, open PythonAnywhere's **Databases** tab. Initialize the account's MySQL password if it has not been set, then create the production MySQL database. Record the database name, username, password, hostname, and port displayed there; creating the database and setting the password are one-time control-panel operations.
@@ -101,6 +125,8 @@ Apply the initial database and static setup:
 ```bash
 uv run python manage.py check --deploy --settings=app.settings.production
 uv run python manage.py migrate --noinput --settings=app.settings.production
+npm ci
+npm run build
 uv run python manage.py collectstatic --noinput --clear --settings=app.settings.production
 uv run python manage.py createsuperuser --settings=app.settings.production
 ```

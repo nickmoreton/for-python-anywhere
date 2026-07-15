@@ -1,3 +1,13 @@
+FROM node:24.18.0-bookworm-slim AS frontend
+
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+RUN npm ci
+
+COPY assets ./assets
+RUN npm run build
+
 FROM ghcr.io/astral-sh/uv:0.11.28 AS uv
 
 FROM python:3.13-slim-bookworm AS builder
@@ -48,6 +58,8 @@ RUN mkdir -p /app/media /app/staticfiles \
  && chown -R wagtail:wagtail /app
 
 COPY --chown=wagtail:wagtail . .
+COPY --from=frontend --chown=wagtail:wagtail /app/app/static/css/app.css /app/app/static/css/app.css
+COPY --from=frontend --chown=wagtail:wagtail /app/app/static/js/app.js /app/app/static/js/app.js
 
 USER wagtail
 

@@ -95,6 +95,11 @@ fi
 
 git merge --ff-only "$expected_commit"
 uv sync --locked --python 3.13
+export NVM_DIR="$HOME/nvm"
+source "$NVM_DIR/nvm.sh"
+nvm use
+npm ci
+npm run build
 uv run python manage.py check --deploy --settings=app.settings.production
 uv run python manage.py migrate --noinput --settings=app.settings.production
 uv run python manage.py collectstatic --noinput --clear --settings=app.settings.production
