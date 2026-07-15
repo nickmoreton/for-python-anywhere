@@ -227,6 +227,8 @@ The deployment workflow writes this value to `~/.ssh/known_hosts` and connects w
 
 Open GitHub Actions, select **Deploy to PythonAnywhere**, choose **Run workflow**, and run it. The workflow always checks out and validates `main`, captures its full 40-character commit SHA, and requires the server's `origin/main` to still match that exact SHA before deploying it. A successful run means validation passed, the remote script completed, the WSGI file was touched, and the public HTTPS endpoint returned HTTP 200 through 399.
 
+Before installing frontend dependencies, the remote deployment automatically installs and activates the exact Node.js version pinned in `.nvmrc`. NVM reuses the version when it is already installed and downloads it when it is absent. NVM itself must already exist at `$HOME/nvm` as described in the one-time setup.
+
 Overlapping runs are serialized in GitHub and rejected by a server-side lock. The server checkout must contain no tracked local edits and must be able to fast-forward to the validated commit on `origin/main`.
 
 ## Failure and recovery
