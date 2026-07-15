@@ -1,3 +1,173 @@
+$ink: #202321;
+$muted: #666d68;
+$line: #dfe4e0;
+$surface: #ffffff;
+$canvas: #f2f4f1;
+$accent: #356b52;
+$accent-soft: #dce9e1;
+
 :root {
   color-scheme: light;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
+  font-synthesis: none;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  min-width: 20rem;
+  background: $canvas;
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  color: $ink;
+  background:
+    radial-gradient(circle at 20% 10%, rgba($accent, 0.08), transparent 32rem),
+    $canvas;
+  line-height: 1.6;
+}
+
+a {
+  color: inherit;
+  text-underline-offset: 0.18em;
+}
+
+a:hover {
+  color: $accent;
+}
+
+.coming-soon {
+  display: grid;
+  min-height: 100vh;
+  grid-template-rows: 1fr auto;
+  gap: 2rem;
+  padding: clamp(1.25rem, 5vw, 4rem);
+}
+
+.coming-soon__panel {
+  width: min(100%, 44rem);
+  margin: auto;
+  padding: clamp(2rem, 7vw, 5rem);
+  border: 1px solid rgba($line, 0.9);
+  border-radius: 1.5rem;
+  background: rgba($surface, 0.92);
+  box-shadow: 0 1.5rem 4rem rgba($ink, 0.08);
+}
+
+.coming-soon__brand,
+.coming-soon__eyebrow,
+.coming-soon__intro,
+.coming-soon h1 {
+  margin-top: 0;
+}
+
+.coming-soon__brand {
+  margin-bottom: clamp(3rem, 9vw, 6rem);
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.coming-soon__eyebrow {
+  margin-bottom: 0.75rem;
+  color: $accent;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.coming-soon h1 {
+  max-width: 12ch;
+  margin-bottom: 1.25rem;
+  font-size: clamp(2.5rem, 8vw, 5.5rem);
+  font-weight: 600;
+  letter-spacing: -0.055em;
+  line-height: 0.98;
+}
+
+.coming-soon__intro {
+  max-width: 35rem;
+  margin-bottom: 2rem;
+  color: $muted;
+  font-size: clamp(1rem, 2vw, 1.15rem);
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-height: 2.5rem;
+  padding: 0.55rem 0.9rem;
+  border: 1px solid $accent-soft;
+  border-radius: 999px;
+  color: $accent;
+  background: rgba($accent-soft, 0.45);
+  font-size: 0.85rem;
+  font-weight: 650;
+}
+
+.status__dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 0 0 rgba($accent, 0.35);
+  animation: status-pulse 2.4s ease-out infinite;
+}
+
+.status__message {
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+
+.status__message.is-changing {
+  opacity: 0;
+  transform: translateY(0.2rem);
+}
+
+.coming-soon__footer {
+  color: $muted;
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+@keyframes status-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba($accent, 0.35);
+  }
+
+  70%,
+  100% {
+    box-shadow: 0 0 0 0.6rem rgba($accent, 0);
+  }
+}
+
+@media (max-width: 34rem) {
+  .coming-soon__panel {
+    border-radius: 1rem;
+  }
+
+  .coming-soon__brand {
+    margin-bottom: 3rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
 }

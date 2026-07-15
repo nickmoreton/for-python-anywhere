@@ -40,3 +40,17 @@ class HomeTests(WagtailPageTestCase):
     def test_homepage_template_used(self):
         response = self.client.get(self.homepage.url)
         self.assertTemplateUsed(response, "home/home_page.html")
+
+    def test_homepage_renders_placeholder_content(self):
+        response = self.client.get(self.homepage.url)
+
+        self.assertContains(response, "Something new is taking shape")
+        self.assertContains(response, "Site preparation in progress")
+        self.assertContains(response, "Powered by Wagtail")
+        self.assertContains(response, "data-status-message")
+
+    def test_homepage_does_not_render_generated_welcome_content(self):
+        response = self.client.get(self.homepage.url)
+
+        self.assertNotContains(response, "Welcome to your new Wagtail site!")
+        self.assertNotContains(response, "css/welcome_page.css")
