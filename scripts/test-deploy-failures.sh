@@ -28,14 +28,27 @@ setup_case() {
     repository=$case_dir/repository
     bin=$case_dir/bin
     log=$case_dir/commands.log
-    mkdir -p "$home" "$repository/.venv/bin" "$bin"
+    mkdir -p "$home/nvm" "$repository/.venv/bin" "$bin"
     : > "$home/.my.cnf"
     : > "$repository/.env"
     : > "$repository/wsgi.py"
 
     make_command "$repository/.venv/bin/python" 'printf "%s\n" test_database'
     make_command "$bin/flock" 'exit 0'
-    make_command "$bin/uv" 'exit 0'
+    make_command "$bin/uv" 'printf "uv %s\n" "$*" >> "$COMMAND_LOG"' 'exit 0'
+    cat > "$home/nvm/nvm.sh" <<'NVM'
+nvm() {
+    printf "nvm %s\n" "$*" >> "$COMMAND_LOG"
+    return "${NVM_EXIT:-0}"
+}
+NVM
+    make_command "$bin/npm" \
+        'printf "npm %s\n" "$*" >> "$COMMAND_LOG"' \
+        'if [[ "$*" == "run build" ]]; then exit "${NPM_BUILD_EXIT:-0}"; fi' \
+        'exit 0'
+    make_command "$bin/touch" \
+        '/usr/bin/touch "$@"' \
+        '[[ "$1" == */wsgi.py ]] && /usr/bin/touch "$1.reloaded"'
     make_command "$bin/git" \
         'printf "git %s\n" "$*" >> "$COMMAND_LOG"' \
         'case "$1 $2" in' \
@@ -59,6 +72,7 @@ run_deploy() {
         EXPECTED_COMMIT=$expected_commit \
         GIT_STATUS_EXIT=${GIT_STATUS_EXIT:-0} \
         MYSQLDUMP_EXIT=${MYSQLDUMP_EXIT:-0} \
+        NPM_BUILD_EXIT=${NPM_BUILD_EXIT:-0} \
         bash "$deploy_script" "$repository" "$repository/wsgi.py" "$expected_commit" 2>&1
     )
     status=$?
@@ -163,6 +177,21 @@ test_retention_stays_at_backup_root() {
     echo "PASS: retention only removes backups at the backup directory root"
 }
 
+test_npm_build_failure_aborts_before_django_operations() {
+    setup_case
+    make_command "$bin/find" 'exit 0'
+    NPM_BUILD_EXIT=49 run_deploy
+    [[ $status == 49 ]] || fail "npm build failure returned $status: $output"
+    grep -q '^npm ci$' "$log" || fail "deployment did not install locked npm dependencies"
+    grep -q '^npm run build$' "$log" || fail "deployment did not attempt the asset build"
+    ! grep -q '^uv run python manage.py' "$log" \
+        || fail "deployment ran Django operations after asset build failure"
+    [[ ! -e "$repository/wsgi.py.reloaded" ]] \
+        || fail "deployment reloaded WSGI after asset build failure"
+    rm -rf "$case_dir"
+    echo "PASS: npm build failure aborts before Django operations"
+}
+
 case ${1:-all} in
     git-status) test_git_status_failure_aborts ;;
     retention-find) test_retention_pipeline_failure_aborts find 43 ;;
@@ -172,6 +201,7 @@ case ${1:-all} in
     mysqldump) test_failed_backup_preserves_final mysqldump 45 ;;
     collision) test_backup_publication_collision_aborts ;;
     retention-scope) test_retention_stays_at_backup_root ;;
+    npm-build) test_npm_build_failure_aborts_before_django_operations ;;
     all)
         test_git_status_failure_aborts
         test_retention_pipeline_failure_aborts find 43
@@ -181,6 +211,7 @@ case ${1:-all} in
         test_failed_backup_preserves_final mysqldump 45
         test_backup_publication_collision_aborts
         test_retention_stays_at_backup_root
+        test_npm_build_failure_aborts_before_django_operations
         ;;
     *) fail "unknown test: $1" ;;
 esac

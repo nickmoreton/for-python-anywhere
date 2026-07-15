@@ -44,4 +44,32 @@ rg -q 'chmod 700 "?\$HOME/\.ssh"?' docs/pythonanywhere.md \
 rg -q 'chmod 600 "?\$HOME/\.ssh/authorized_keys"?' docs/pythonanywhere.md \
     || fail "runbook does not set authorized_keys to 0600"
 
+rg -q '^export NVM_DIR="\$HOME/nvm"$' scripts/deploy.sh \
+    || fail "deployment does not use the confirmed NVM directory"
+rg -q '^source "\$NVM_DIR/nvm\.sh"$' scripts/deploy.sh \
+    || fail "deployment does not source NVM"
+
+deploy_nvm_line=$(rg -n '^source "\$NVM_DIR/nvm\.sh"$' scripts/deploy.sh | cut -d: -f1)
+deploy_ci_line=$(rg -n '^npm ci$' scripts/deploy.sh | cut -d: -f1)
+deploy_build_line=$(rg -n '^npm run build$' scripts/deploy.sh | cut -d: -f1)
+deploy_migrate_line=$(rg -n '^uv run python manage\.py migrate ' scripts/deploy.sh | cut -d: -f1)
+deploy_collectstatic_line=$(rg -n '^uv run python manage\.py collectstatic ' scripts/deploy.sh | cut -d: -f1)
+deploy_reload_line=$(rg -n '^touch "\$wsgi_file"$' scripts/deploy.sh | cut -d: -f1)
+
+(( deploy_nvm_line < deploy_ci_line \
+    && deploy_ci_line < deploy_build_line \
+    && deploy_build_line < deploy_migrate_line \
+    && deploy_build_line < deploy_collectstatic_line \
+    && deploy_build_line < deploy_reload_line )) \
+    || fail "frontend build is not ordered before Django mutation and reload"
+
+rg -q 'git clone --depth 1 https://github\.com/nvm-sh/nvm\.git "\$HOME/nvm"' docs/pythonanywhere.md \
+    || fail "runbook does not document NVM installation"
+rg -q '^nvm install$' docs/pythonanywhere.md \
+    || fail "runbook does not install the .nvmrc version"
+rg -q '^npm ci$' docs/pythonanywhere.md \
+    || fail "runbook does not install locked frontend dependencies"
+rg -q '^npm run build$' docs/pythonanywhere.md \
+    || fail "runbook does not build initial frontend assets"
+
 echo "PASS: deployment static invariants"

@@ -1,21 +1,23 @@
 {% extends "base.html" %}
-{% load static %}
 
 {% block body_class %}template-homepage{% endblock %}
 
-{% block extra_css %}
-
-{% comment %}
-Delete the line below if you're just getting started and want to remove the welcome screen!
-{% endcomment %}
-<link rel="stylesheet" href="{% static 'css/welcome_page.css' %}">
-{% endblock extra_css %}
-
 {% block content %}
-
-{% comment %}
-Delete the line below if you're just getting started and want to remove the welcome screen!
-{% endcomment %}
-{% include 'home/welcome_page.html' %}
-
+<main class="coming-soon">
+    <section class="coming-soon__panel" aria-labelledby="coming-soon-title">
+        <p class="coming-soon__brand">{{ page.title }}</p>
+        <p class="coming-soon__eyebrow">A new website</p>
+        <h1 id="coming-soon-title">Something new is taking shape</h1>
+        <p class="coming-soon__intro">
+            We are carefully preparing this space. Please check back soon.
+        </p>
+        <div class="status">
+            <span class="status__dot" aria-hidden="true"></span>
+            <span class="status__message" data-status-message>Site preparation in progress</span>
+        </div>
+    </section>
+    <footer class="coming-soon__footer">
+        <a href="https://wagtail.org/" rel="noreferrer">Powered by Wagtail</a>
+    </footer>
+</main>
 {% endblock content %}
