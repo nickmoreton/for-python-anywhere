@@ -71,6 +71,8 @@ deploy_reload_line=$(rg -n '^touch "\$wsgi_file"$' scripts/deploy.sh | cut -d: -
 
 rg -q 'git clone --depth 1 https://github\.com/nvm-sh/nvm\.git "\$HOME/nvm"' docs/pythonanywhere.md \
     || fail "runbook does not document NVM installation"
+rg -Fq 'automatically installs and activates the exact Node.js version pinned in `.nvmrc`' docs/pythonanywhere.md \
+    || fail "runbook does not document automatic pinned Node installation"
 rg -q '^nvm install$' docs/pythonanywhere.md \
     || fail "runbook does not install the .nvmrc version"
 rg -q '^npm ci$' docs/pythonanywhere.md \
