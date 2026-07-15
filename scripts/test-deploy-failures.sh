@@ -72,6 +72,7 @@ run_deploy() {
         EXPECTED_COMMIT=$expected_commit \
         GIT_STATUS_EXIT=${GIT_STATUS_EXIT:-0} \
         MYSQLDUMP_EXIT=${MYSQLDUMP_EXIT:-0} \
+        NVM_EXIT=${NVM_EXIT:-0} \
         NPM_BUILD_EXIT=${NPM_BUILD_EXIT:-0} \
         bash "$deploy_script" "$repository" "$repository/wsgi.py" "$expected_commit" 2>&1
     )
@@ -177,6 +178,21 @@ test_retention_stays_at_backup_root() {
     echo "PASS: retention only removes backups at the backup directory root"
 }
 
+test_nvm_install_failure_aborts_before_npm_and_django() {
+    setup_case
+    make_command "$bin/find" 'exit 0'
+    NVM_EXIT=48 run_deploy
+    [[ $status == 48 ]] || fail "nvm install failure returned $status: $output"
+    grep -q '^nvm install$' "$log" || fail "deployment did not install the pinned Node version"
+    ! grep -q '^npm ' "$log" || fail "deployment ran npm after nvm install failed"
+    ! grep -q '^uv run python manage.py' "$log" \
+        || fail "deployment ran Django operations after nvm install failed"
+    [[ ! -e "$repository/wsgi.py.reloaded" ]] \
+        || fail "deployment reloaded WSGI after nvm install failed"
+    rm -rf "$case_dir"
+    echo "PASS: nvm install failure aborts before npm and Django operations"
+}
+
 test_npm_build_failure_aborts_before_django_operations() {
     setup_case
     make_command "$bin/find" 'exit 0'
@@ -201,6 +217,7 @@ case ${1:-all} in
     mysqldump) test_failed_backup_preserves_final mysqldump 45 ;;
     collision) test_backup_publication_collision_aborts ;;
     retention-scope) test_retention_stays_at_backup_root ;;
+    nvm-install) test_nvm_install_failure_aborts_before_npm_and_django ;;
     npm-build) test_npm_build_failure_aborts_before_django_operations ;;
     all)
         test_git_status_failure_aborts
@@ -211,6 +228,7 @@ case ${1:-all} in
         test_failed_backup_preserves_final mysqldump 45
         test_backup_publication_collision_aborts
         test_retention_stays_at_backup_root
+        test_nvm_install_failure_aborts_before_npm_and_django
         test_npm_build_failure_aborts_before_django_operations
         ;;
     *) fail "unknown test: $1" ;;

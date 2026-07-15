@@ -48,15 +48,21 @@ rg -q '^export NVM_DIR="\$HOME/nvm"$' scripts/deploy.sh \
     || fail "deployment does not use the confirmed NVM directory"
 rg -q '^source "\$NVM_DIR/nvm\.sh"$' scripts/deploy.sh \
     || fail "deployment does not source NVM"
+rg -q '^nvm install$' scripts/deploy.sh \
+    || fail "deployment does not install the pinned Node version"
+! rg -q '^nvm use$' scripts/deploy.sh \
+    || fail "deployment still requires the pinned Node version to be preinstalled"
 
 deploy_nvm_line=$(rg -n '^source "\$NVM_DIR/nvm\.sh"$' scripts/deploy.sh | cut -d: -f1)
+deploy_nvm_install_line=$(rg -n '^nvm install$' scripts/deploy.sh | cut -d: -f1)
 deploy_ci_line=$(rg -n '^npm ci$' scripts/deploy.sh | cut -d: -f1)
 deploy_build_line=$(rg -n '^npm run build$' scripts/deploy.sh | cut -d: -f1)
 deploy_migrate_line=$(rg -n '^uv run python manage\.py migrate ' scripts/deploy.sh | cut -d: -f1)
 deploy_collectstatic_line=$(rg -n '^uv run python manage\.py collectstatic ' scripts/deploy.sh | cut -d: -f1)
 deploy_reload_line=$(rg -n '^touch "\$wsgi_file"$' scripts/deploy.sh | cut -d: -f1)
 
-(( deploy_nvm_line < deploy_ci_line \
+(( deploy_nvm_line < deploy_nvm_install_line \
+    && deploy_nvm_install_line < deploy_ci_line \
     && deploy_ci_line < deploy_build_line \
     && deploy_build_line < deploy_migrate_line \
     && deploy_build_line < deploy_collectstatic_line \
