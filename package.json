@@ -1,0 +1,23 @@
+{
+  "name": "for-python-anywhere",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": "24.18.0"
+  },
+  "scripts": {
+    "build": "npm run build:css && npm run build:js",
+    "build:css": "sass --no-source-map --style=compressed assets/scss/app.scss app/static/css/app.css",
+    "build:js": "esbuild assets/js/app.js --bundle --minify --target=es2020 --outfile=app/static/js/app.js",
+    "dev": "concurrently --kill-others --names css,js \"npm:dev:css\" \"npm:dev:js\"",
+    "dev:css": "sass --watch --no-source-map assets/scss/app.scss app/static/css/app.css",
+    "dev:js": "esbuild assets/js/app.js --bundle --target=es2020 --outfile=app/static/js/app.js --watch",
+    "test": "node --test assets/js/*.test.js"
+  },
+  "devDependencies": {
+    "concurrently": "10.0.3",
+    "esbuild": "0.28.1",
+    "sass": "1.101.0"
+  }
+}
