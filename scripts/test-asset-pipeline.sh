@@ -22,6 +22,10 @@ const expectedDependencies = {
   esbuild: '0.28.1',
   concurrently: '10.0.3',
 };
+const expectedInstallScripts = {
+  '@parcel/watcher@2.5.6': true,
+  'esbuild@0.28.1': true,
+};
 
 if (manifest.private !== true) throw new Error('package must be private');
 if (manifest.engines?.node !== '24.18.0') throw new Error('Node engine is not pinned');
@@ -32,6 +36,9 @@ for (const [name, version] of Object.entries(expectedDependencies)) {
 }
 for (const script of ['build', 'build:css', 'build:js', 'dev', 'dev:css', 'dev:js', 'test']) {
   if (!manifest.scripts?.[script]) throw new Error(`missing npm script: ${script}`);
+}
+if (JSON.stringify(manifest.allowScripts) !== JSON.stringify(expectedInstallScripts)) {
+  throw new Error('install-script approvals are not pinned');
 }
 NODE
 
