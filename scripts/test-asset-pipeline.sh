@@ -51,4 +51,11 @@ npm run build
 [[ -s app/static/css/app.css ]] || fail "production CSS was not generated"
 [[ -s app/static/js/app.js ]] || fail "production JavaScript was not generated"
 
+rg -q 'Node 24\.18\.0' AGENTS.md || fail "AGENTS.md does not document the Node version"
+rg -q 'npm ci' AGENTS.md || fail "AGENTS.md does not document locked npm installation"
+rg -q 'npm run dev' AGENTS.md || fail "AGENTS.md does not document the watch workflow"
+rg -q 'npm run build' AGENTS.md || fail "AGENTS.md does not document the production build"
+rg -q 'The `assets` service runs `npm run dev` automatically' AGENTS.md \
+    || fail "AGENTS.md does not document automatic Compose watching"
+
 echo "PASS: asset pipeline"
