@@ -4,7 +4,7 @@
 
 ## Goal
 
-Reduce persistent disk usage on PythonAnywhere by removing the repository's `node_modules` directory after frontend assets have been built successfully. Node.js remains a deployment-time build tool and is not required by the running Django application.
+Reduce persistent disk usage on PythonAnywhere by removing the repository's `node_modules` directory after the frontend build and Django deployment operations have completed successfully. Node.js remains a deployment-time build tool and is not required by the running Django application.
 
 ## Scope
 
@@ -17,21 +17,22 @@ Local host development, Docker Compose, Docker image builds, and GitHub Actions 
 
 ## Deployment Flow
 
-The automated PythonAnywhere deployment will perform the frontend steps in this order:
+The automated PythonAnywhere deployment will perform the relevant steps in this order:
 
 1. Activate or install the Node.js version pinned by `.nvmrc`.
 2. Run `npm ci` to create a clean dependency installation from `package-lock.json`.
 3. Run `npm run build` to generate the production CSS and JavaScript files.
-4. Run `rm -rf -- node_modules`.
-5. Continue with the production Django check, migrations, static-file collection, and WSGI reload.
+4. Run the production Django check, migrations, and static-file collection.
+5. Run `rm -rf -- node_modules`.
+6. Reload WSGI.
 
-The initial PythonAnywhere setup instructions will place the same cleanup command immediately after their successful `npm run build` command.
+The initial PythonAnywhere setup instructions have no WSGI reload step. They will place the cleanup command after their successful static-file collection, once the initial frontend build output has been collected.
 
 ## Failure Behavior
 
-Cleanup runs only after `npm run build` exits successfully. If `npm ci` or `npm run build` fails, the deployment aborts under the script's existing strict error handling and leaves `node_modules` in place for diagnosis.
+Cleanup runs only after `npm run build` and the subsequent Django deployment operations exit successfully. If dependency installation, the frontend build, a Django check, migration, or static-file collection fails, the deployment aborts under the script's existing strict error handling and leaves `node_modules` in place for diagnosis.
 
-If removing `node_modules` itself fails, the deployment aborts before database migration, static-file collection, or application reload. This prevents a deployment from being reported as successful when its disk-cleanup requirement was not satisfied.
+If removing `node_modules` itself fails, the deployment aborts before application reload. Database migrations and static-file collection may already have completed, matching the existing deployment order, but the new application version is not activated. This prevents the deployment from reporting a cleanup failure after the WSGI application has already reloaded.
 
 The generated CSS and JavaScript files are outside `node_modules`, so removing dependencies does not remove the build output. A later deployment recreates dependencies with `npm ci` before rebuilding.
 
@@ -39,9 +40,9 @@ The generated CSS and JavaScript files are outside `node_modules`, so removing d
 
 Deployment tests will verify that:
 
-- cleanup is ordered after `npm run build` and before Django mutation or reload operations;
+- cleanup is ordered after `npm run build` and all Django deployment operations, but before WSGI reload;
 - a successful deployment removes an existing `node_modules` directory;
-- a failed frontend build leaves `node_modules` in place and does not run Django operations or reload WSGI; and
-- the PythonAnywhere runbook documents cleanup after its initial frontend build.
+- a failure before cleanup leaves `node_modules` in place and does not reload WSGI; and
+- the PythonAnywhere runbook documents cleanup after its initial static-file collection.
 
-The existing deployment, asset-pipeline, workflow, and Django checks remain the regression suite. Repository guidance will be updated to state that automated PythonAnywhere deployments remove `node_modules` after successful asset compilation.
+The existing deployment, asset-pipeline, workflow, and Django checks remain the regression suite. Repository guidance will be updated to state that automated PythonAnywhere deployments remove `node_modules` after the build and Django deployment operations succeed, immediately before WSGI reload.
