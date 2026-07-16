@@ -6,6 +6,8 @@ import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
+from pathlib import Path
+from string import hexdigits
 from typing import Any
 
 import django
@@ -113,6 +115,17 @@ def _database_vendor() -> str:
 
 
 def _git_commit() -> str:
+    revision_file = Path(settings.BASE_DIR) / ".deployed-commit"
+    try:
+        deployed_revision = revision_file.read_text(encoding="utf-8").strip()
+    except OSError:
+        deployed_revision = ""
+
+    if len(deployed_revision) == 40 and all(
+        character in hexdigits for character in deployed_revision
+    ):
+        return deployed_revision[:7]
+
     result = subprocess.run(
         ["git", "rev-parse", "--short", "HEAD"],
         cwd=settings.BASE_DIR,
@@ -126,6 +139,11 @@ def _git_commit() -> str:
 
 def _operating_system() -> str:
     return f"{platform.system()} {platform.release()}".strip()
+
+
+def _cpu_load_average() -> str:
+    one_minute, five_minutes, fifteen_minutes = psutil.getloadavg()
+    return f"{one_minute:.2f} / {five_minutes:.2f} / {fifteen_minutes:.2f}"
 
 
 def _memory_summary() -> str:
@@ -220,10 +238,9 @@ def _infrastructure_metrics() -> tuple[MetricSpec, ...]:
             reader=lambda: psutil.cpu_count(logical=True),
         ),
         MetricSpec(
-            label="CPU utilization",
-            name="cpu_utilization",
-            reader=lambda: psutil.cpu_percent(interval=0.1),
-            formatter=lambda value: f"{value:.1f}%",
+            label="CPU load average (1 / 5 / 15 min)",
+            name="cpu_load_average",
+            reader=_cpu_load_average,
         ),
         MetricSpec(
             label="Memory",

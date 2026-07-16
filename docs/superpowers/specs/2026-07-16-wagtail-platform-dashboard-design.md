@@ -34,7 +34,7 @@ Create `app.platform_dashboard` and add it to `INSTALLED_APPS`. The app will con
 
 The sidebar item and URL registration will use Wagtail's supported admin hooks. A standalone hook-based view is preferred over a Wagtail `ViewSet` because the feature has one read-only page and no CRUD workflow.
 
-Add `psutil` as a locked project dependency for portable CPU, memory, disk, and process readings. Standard Python, Django, and Wagtail APIs will provide the remaining values. Git metadata will be read with a bounded, non-interactive Git command and will fall back safely when the checkout or executable is unavailable.
+Add `psutil` as a locked project dependency for portable CPU, memory, disk, and process readings. Standard Python, Django, and Wagtail APIs will provide the remaining values. Production deployment publishes its validated commit to an ignored `.deployed-commit` file immediately before reloading WSGI. The collector reads that file first and uses a bounded, non-interactive Git command only as a local-development fallback.
 
 ## Access Control
 
@@ -67,7 +67,7 @@ The dashboard uses Wagtail's standard admin base template, header, spacing, and 
 - Operating system name and release.
 - Machine architecture.
 - Physical and logical CPU counts.
-- CPU utilization at collection time.
+- CPU load averages over the last 1, 5, and 15 minutes.
 - Total, used, and available memory, plus utilization percentage.
 - Total, used, and free space, plus utilization percentage, for the filesystem containing Django's `BASE_DIR`.
 - Current Django process uptime.
@@ -89,15 +89,15 @@ For each request:
 5. The collector returns application and infrastructure sections to the view.
 6. The template renders the supplied records without performing system calls, Git commands, calculations, or secret filtering.
 
-Human-readable byte values and durations will use consistent deterministic formatting so they are easy to test. CPU utilization may require a short bounded sampling interval; collection must not add a noticeable delay to normal admin use.
+Human-readable byte values, durations, and load averages will use consistent deterministic formatting so they are easy to test. Collection must not add a noticeable delay to normal admin use.
 
 ## Failure Handling and Logging
 
-Each metric boundary catches expected availability errors independently. Examples include restricted host metrics, an unsupported platform API, missing Git metadata, a missing Git executable, or a process ending during inspection. The affected field displays `Unavailable`, while all other fields continue to render.
+Each metric boundary catches expected availability errors independently. Examples include restricted host metrics, an unsupported platform API, missing deployment revision and Git metadata, a missing Git executable, or a process ending during inspection. The affected field displays `Unavailable`, while all other fields continue to render.
 
 Unexpected collection errors are logged server-side with enough context to identify the failed metric, but raw exception details are not rendered in the page. Secret values must not be included in log context.
 
-The Git lookup must have a short timeout and must not invoke a shell. Infrastructure reads must remain local and perform no network requests.
+The deployment revision file must contain the validated full 40-character SHA and be published atomically before WSGI reload. The local Git fallback must have a short timeout and must not invoke a shell. Infrastructure reads must remain local and perform no network requests.
 
 ## Security and Privacy
 
@@ -128,7 +128,8 @@ Tests will cover the integration and the collector as separate units.
 ### Collector tests
 
 - Application versions, environment, database vendor, hostname, and Git SHA are mapped and formatted correctly.
-- CPU, memory, disk, and process uptime readings are mapped and formatted correctly from mocked `psutil` values.
+- CPU load-average, memory, disk, and process uptime readings are mapped and formatted correctly from mocked `psutil` values.
+- The collector prefers the deployment-published revision and falls back to a bounded Git lookup when it is absent or invalid.
 - Bytes, percentages, and durations have deterministic output.
 - Failure of each external boundary produces `Unavailable` for that field without removing successful fields.
 - A complete snapshot retains successful sibling fields when one real metric boundary fails.
@@ -143,6 +144,8 @@ Expected changes are limited to:
 - A new `app/platform_dashboard/` application with hooks, view, collector, template, and tests.
 - `app/settings/base.py` to install the app.
 - `pyproject.toml` and `uv.lock` to add and lock `psutil`.
+- `scripts/deploy.sh` to publish `.deployed-commit` atomically before reloading WSGI.
+- `.gitignore`, `.dockerignore`, and deployment integration tests to keep the runtime revision out of source and container build contexts while verifying deployment order.
 
 The public URL configuration, public templates, frontend Sass/JavaScript pipeline, deployment workflow, and database schema do not need to change.
 

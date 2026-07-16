@@ -1,5 +1,7 @@
 # Wagtail Platform Dashboard Implementation Plan
 
+> **Production follow-up (2026-07-16):** The original point-in-time CPU percentage and WSGI-time Git lookup proved unreliable on PythonAnywhere. The implemented follow-up replaces the percentage with 1/5/15-minute load averages and makes deployment publish an ignored `.deployed-commit` file that the collector prefers over its local-development Git fallback. The task transcript below remains the original implementation plan.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Add an administrator-only Platform dashboard to the Wagtail sidebar that displays a safe page-load snapshot of application and infrastructure information.

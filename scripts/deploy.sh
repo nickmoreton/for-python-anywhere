@@ -104,6 +104,16 @@ uv run python manage.py check --deploy --settings=app.settings.production
 uv run python manage.py migrate --noinput --settings=app.settings.production
 uv run python manage.py collectstatic --noinput --clear --settings=app.settings.production
 rm -rf -- node_modules
+
+revision_temp=$(mktemp "$repository_path/.deployed-commit.XXXXXXXXXX.tmp")
+cleanup_revision() {
+    rm -f -- "$revision_temp"
+}
+trap cleanup_revision EXIT
+printf '%s\n' "$expected_commit" > "$revision_temp"
+mv -- "$revision_temp" "$repository_path/.deployed-commit"
+trap - EXIT
+
 touch "$wsgi_file"
 
 echo "Deployment completed at commit $(git rev-parse --short HEAD)."

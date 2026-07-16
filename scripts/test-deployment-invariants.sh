@@ -16,6 +16,9 @@ assert_dockerignore_entry() {
 
 assert_dockerignore_entry '.worktrees/'
 assert_dockerignore_entry '.superpowers/'
+assert_dockerignore_entry '.deployed-commit'
+grep -Fxq '.deployed-commit' .gitignore \
+    || fail ".gitignore is missing .deployed-commit"
 
 rg -q 'date -u \+%Y%m%dT%H%M%S%NZ.*\$\$' scripts/deploy.sh \
     || fail "backup final names do not include subsecond time and process identity"
@@ -61,6 +64,7 @@ deploy_check_line=$(rg -n '^uv run python manage\.py check ' scripts/deploy.sh |
 deploy_migrate_line=$(rg -n '^uv run python manage\.py migrate ' scripts/deploy.sh | cut -d: -f1)
 deploy_collectstatic_line=$(rg -n '^uv run python manage\.py collectstatic ' scripts/deploy.sh | cut -d: -f1)
 deploy_cleanup_line=$(rg -n '^rm -rf -- node_modules$' scripts/deploy.sh | cut -d: -f1)
+deploy_revision_line=$(rg -n '^mv -- "\$revision_temp" "\$repository_path/\.deployed-commit"$' scripts/deploy.sh | cut -d: -f1)
 deploy_reload_line=$(rg -n '^touch "\$wsgi_file"$' scripts/deploy.sh | cut -d: -f1)
 
 (( deploy_nvm_line < deploy_nvm_install_line \
@@ -70,7 +74,8 @@ deploy_reload_line=$(rg -n '^touch "\$wsgi_file"$' scripts/deploy.sh | cut -d: -
     && deploy_check_line < deploy_migrate_line \
     && deploy_migrate_line < deploy_collectstatic_line \
     && deploy_collectstatic_line < deploy_cleanup_line \
-    && deploy_cleanup_line < deploy_reload_line )) \
+    && deploy_cleanup_line < deploy_revision_line \
+    && deploy_revision_line < deploy_reload_line )) \
     || fail "frontend build, Django operations, cleanup, and reload are incorrectly ordered"
 
 rg -q 'git clone --depth 1 https://github\.com/nvm-sh/nvm\.git "\$HOME/nvm"' docs/pythonanywhere.md \
