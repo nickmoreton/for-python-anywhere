@@ -28,6 +28,11 @@ class PlatformDashboardAdminTests(TestCase):
             email="editor@example.com",
             password="password",
         )
+        cls.member = user_model.objects.create_user(
+            username="platform-member",
+            email="member@example.com",
+            password="password",
+        )
         cls.editor.user_permissions.add(
             Permission.objects.get(
                 content_type__app_label="wagtailadmin",
@@ -50,6 +55,17 @@ class PlatformDashboardAdminTests(TestCase):
         response = self.client.get(reverse("platform_dashboard"))
 
         self.assertEqual(response.status_code, 403)
+
+    def test_authenticated_user_without_admin_access_is_redirected_to_login(self):
+        self.client.force_login(self.member)
+
+        response = self.client.get(reverse("platform_dashboard"))
+
+        self.assertRedirects(
+            response,
+            f'{reverse("wagtailadmin_login")}?next={reverse("platform_dashboard")}',
+            fetch_redirect_response=False,
+        )
 
     @patch("app.platform_dashboard.views.collect_platform_snapshot")
     def test_superuser_sees_snapshot_sections(self, collect_snapshot):

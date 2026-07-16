@@ -41,7 +41,8 @@ Add `psutil` as a locked project dependency for portable CPU, memory, disk, and 
 The menu item's visibility check will return true only for an authenticated superuser. Hiding the menu is not the security boundary: the view will independently enforce the same policy.
 
 - Anonymous requests are redirected to the Wagtail admin login.
-- Authenticated non-superusers receive HTTP 403.
+- Authenticated Wagtail admin users who are not superusers receive HTTP 403.
+- Authenticated users without Wagtail admin access follow Wagtail's standard admin-login redirect, because Wagtail rejects them before the registered view runs.
 - Superusers receive the dashboard.
 
 No platform detail is placed in the URL, redirect, or error response for an unauthorized request.
@@ -117,7 +118,8 @@ Tests will cover the integration and the collector as separate units.
 ### Admin integration tests
 
 - An anonymous request redirects to the Wagtail login.
-- An authenticated non-superuser receives HTTP 403 at the direct URL.
+- An authenticated Wagtail admin non-superuser receives HTTP 403 at the direct URL.
+- An authenticated user without Wagtail admin access is redirected through Wagtail's admin-login flow.
 - A superuser receives HTTP 200 and the Wagtail dashboard template.
 - Both dashboard sections and representative values are rendered from a mocked snapshot.
 - The Platform menu item is shown to superusers and hidden from non-superusers.
@@ -129,6 +131,7 @@ Tests will cover the integration and the collector as separate units.
 - CPU, memory, disk, and process uptime readings are mapped and formatted correctly from mocked `psutil` values.
 - Bytes, percentages, and durations have deterministic output.
 - Failure of each external boundary produces `Unavailable` for that field without removing successful fields.
+- A complete snapshot retains successful sibling fields when one real metric boundary fails.
 - The returned snapshot contains a timezone-aware collection timestamp.
 
 Project-level verification will run the existing Django test suite, `manage.py check`, and `makemigrations --check --dry-run`. Since the feature adds no models, the migration check must remain clean.

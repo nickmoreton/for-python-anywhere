@@ -145,6 +145,29 @@ class PlatformCollectorTests(SimpleTestCase):
             ),
         )
 
+    @patch(
+        "app.platform_dashboard.collector.platform.python_version",
+        return_value="3.13.5",
+    )
+    @patch(
+        "app.platform_dashboard.collector._git_commit",
+        side_effect=OSError("git is unavailable"),
+    )
+    def test_snapshot_keeps_successful_fields_when_one_boundary_fails(
+        self,
+        _git,
+        _python_version,
+    ):
+        snapshot = collect_platform_snapshot()
+        application = {
+            field.label: field for field in snapshot.sections[0].fields
+        }
+
+        self.assertEqual(application["Python"].value, "3.13.5")
+        self.assertEqual(application["Python"].status, "")
+        self.assertEqual(application["Git commit"].value, "Unavailable")
+        self.assertEqual(application["Git commit"].status, "unavailable")
+
     def test_unexpected_metric_failure_is_logged_without_rendering_exception(self):
         spec = MetricSpec(label="Python", name="python_version", reader=Mock())
         spec.reader.side_effect = AssertionError("private failure detail")

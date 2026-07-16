@@ -13,7 +13,7 @@
 - The page is read-only and served at `/admin/platform/`.
 - The sidebar label is `Platform`, with Wagtail's built-in `cogs` icon.
 - Anonymous users are redirected through Wagtail's admin login flow.
-- Authenticated non-superusers receive HTTP 403; only superusers can view the page or its sidebar item.
+- Authenticated Wagtail admin non-superusers receive HTTP 403. Authenticated users without Wagtail admin access follow Wagtail's standard admin-login redirect. Only superusers can view the page or its sidebar item.
 - Values are collected once per request with no polling, background jobs, charts, or network access.
 - Collection is allowlist-based and never exposes secrets, credentials, environment-variable contents, database connection details, request data, or full settings.
 - Disk values describe the filesystem containing Django's `BASE_DIR`, not a PythonAnywhere account quota.
@@ -674,7 +674,7 @@ Run:
 uv run python manage.py test app.platform_dashboard.tests.test_collector
 ```
 
-Expected: all 7 collector tests pass. Confirm the snapshot test completes in well under one second despite the bounded 0.1-second CPU sample.
+Expected: all 8 collector tests pass, including snapshot-level failure isolation. Confirm the snapshot tests complete promptly despite the bounded 0.1-second CPU sample.
 
 - [ ] **Step 6: Commit the safe collector**
 
@@ -893,7 +893,7 @@ def index(request):
     )
 ```
 
-Do not raise `PermissionDenied` here: Wagtail's outer admin wrapper converts that exception into a redirect. Returning `HttpResponseForbidden` preserves the design's explicit HTTP 403 result for an authenticated non-superuser. Wagtail's registered-admin-URL wrapper rejects anonymous and non-admin requests before this view runs.
+Do not raise `PermissionDenied` here: Wagtail's outer admin wrapper converts that exception into a redirect. Returning `HttpResponseForbidden` preserves the design's explicit HTTP 403 result for an authenticated Wagtail admin non-superuser. Wagtail's registered-admin-URL wrapper redirects anonymous users and authenticated users without admin access before this view runs.
 
 - [ ] **Step 5: Register the admin URL and menu item**
 
@@ -982,7 +982,7 @@ uv run python manage.py test app.platform_dashboard.tests.test_admin
 uv run python manage.py test app.platform_dashboard
 ```
 
-Expected: 5 admin tests pass and all 12 platform dashboard tests pass. If Django's redirect query encoding differs, inspect `response.url` and update only the expected URL to Django's actual encoded `next` value; do not weaken the redirect assertion.
+Expected: 6 admin tests pass and all 14 platform dashboard tests pass, including an authenticated non-admin redirect test and snapshot-level failure isolation. If Django's redirect query encoding differs, inspect `response.url` and update only the expected URL to Django's actual encoded `next` value; do not weaken the redirect assertion.
 
 - [ ] **Step 8: Commit the Wagtail integration**
 
