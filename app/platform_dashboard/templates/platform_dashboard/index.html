@@ -1,0 +1,41 @@
+{% extends "wagtailadmin/generic/base.html" %}
+
+{% block titletag %}Platform{% endblock %}
+
+{% block main_content %}
+    <p class="help-block w-mb-8">
+        Snapshot collected {{ snapshot.collected_at|date:"DATETIME_FORMAT" }}.
+        Values update when this page is reloaded.
+    </p>
+
+    {% for section in snapshot.sections %}
+        <section class="w-mb-10" aria-labelledby="platform-section-{{ forloop.counter }}">
+            <h2 id="platform-section-{{ forloop.counter }}" class="w-h2">
+                {{ section.title }}
+            </h2>
+            <table class="listing">
+                <thead>
+                    <tr>
+                        <th scope="col">Detail</th>
+                        <th scope="col">Value</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for field in section.fields %}
+                        <tr>
+                            <th scope="row">{{ field.label }}</th>
+                            <td{% if field.status %} data-status="{{ field.status }}"{% endif %}>
+                                {{ field.value }}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </section>
+    {% endfor %}
+
+    <p class="help-block">
+        Disk values describe the project filesystem, not a hosting account quota.
+        Uptime is for the current Django process, not the machine or site.
+    </p>
+{% endblock %}
