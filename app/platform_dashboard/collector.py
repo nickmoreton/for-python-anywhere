@@ -118,7 +118,7 @@ def _git_commit() -> str:
     revision_file = Path(settings.BASE_DIR) / ".deployed-commit"
     try:
         deployed_revision = revision_file.read_text(encoding="utf-8").strip()
-    except OSError:
+    except (OSError, UnicodeError):
         deployed_revision = ""
 
     if len(deployed_revision) == 40 and all(

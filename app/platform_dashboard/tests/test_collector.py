@@ -220,3 +220,16 @@ class PlatformCollectorTests(SimpleTestCase):
 
         self.assertEqual(commit, "0123456")
         run.assert_not_called()
+
+    @patch("app.platform_dashboard.collector.subprocess.run")
+    def test_git_lookup_falls_back_when_revision_encoding_is_invalid(self, run):
+        run.return_value.stdout = "abc1234\n"
+
+        with TemporaryDirectory() as temporary_directory:
+            revision_file = Path(temporary_directory) / ".deployed-commit"
+            revision_file.write_bytes(b"\xff\xfe")
+            with self.settings(BASE_DIR=Path(temporary_directory)):
+                commit = _git_commit()
+
+        self.assertEqual(commit, "abc1234")
+        run.assert_called_once()
