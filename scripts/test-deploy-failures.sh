@@ -23,6 +23,8 @@ make_command() {
 setup_case() {
     GIT_STATUS_EXIT=0
     MYSQLDUMP_EXIT=0
+    COLLECTSTATIC_EXIT=0
+    NODE_CLEANUP_EXIT=0
     case_dir=$(mktemp -d)
     home=$case_dir/home
     repository=$case_dir/repository
@@ -35,7 +37,10 @@ setup_case() {
 
     make_command "$repository/.venv/bin/python" 'printf "%s\n" test_database'
     make_command "$bin/flock" 'exit 0'
-    make_command "$bin/uv" 'printf "uv %s\n" "$*" >> "$COMMAND_LOG"' 'exit 0'
+    make_command "$bin/uv" \
+        'printf "uv %s\n" "$*" >> "$COMMAND_LOG"' \
+        'if [[ "$*" == run\ python\ manage.py\ collectstatic\ * ]]; then exit "${COLLECTSTATIC_EXIT:-0}"; fi' \
+        'exit 0'
     cat > "$home/nvm/nvm.sh" <<'NVM'
 nvm() {
     printf "nvm %s\n" "$*" >> "$COMMAND_LOG"
@@ -46,6 +51,9 @@ NVM
         'printf "npm %s\n" "$*" >> "$COMMAND_LOG"' \
         'if [[ "$*" == "run build" ]]; then exit "${NPM_BUILD_EXIT:-0}"; fi' \
         'exit 0'
+    make_command "$bin/rm" \
+        'if [[ "$*" == "-rf -- node_modules" && "${NODE_CLEANUP_EXIT:-0}" != 0 ]]; then exit "$NODE_CLEANUP_EXIT"; fi' \
+        '/bin/rm "$@"'
     make_command "$bin/touch" \
         '/usr/bin/touch "$@"' \
         '[[ "$1" == */wsgi.py ]] && /usr/bin/touch "$1.reloaded"'
@@ -74,6 +82,8 @@ run_deploy() {
         MYSQLDUMP_EXIT=${MYSQLDUMP_EXIT:-0} \
         NVM_EXIT=${NVM_EXIT:-0} \
         NPM_BUILD_EXIT=${NPM_BUILD_EXIT:-0} \
+        COLLECTSTATIC_EXIT=${COLLECTSTATIC_EXIT:-0} \
+        NODE_CLEANUP_EXIT=${NODE_CLEANUP_EXIT:-0} \
         bash "$deploy_script" "$repository" "$repository/wsgi.py" "$expected_commit" 2>&1
     )
     status=$?
@@ -196,16 +206,71 @@ test_nvm_install_failure_aborts_before_npm_and_django() {
 test_npm_build_failure_aborts_before_django_operations() {
     setup_case
     make_command "$bin/find" 'exit 0'
+    mkdir -p "$repository/node_modules"
+    printf '%s\n' installed > "$repository/node_modules/marker"
     NPM_BUILD_EXIT=49 run_deploy
     [[ $status == 49 ]] || fail "npm build failure returned $status: $output"
     grep -q '^npm ci$' "$log" || fail "deployment did not install locked npm dependencies"
     grep -q '^npm run build$' "$log" || fail "deployment did not attempt the asset build"
     ! grep -q '^uv run python manage.py' "$log" \
         || fail "deployment ran Django operations after asset build failure"
+    [[ -e "$repository/node_modules/marker" ]] \
+        || fail "asset build failure removed node_modules"
     [[ ! -e "$repository/wsgi.py.reloaded" ]] \
         || fail "deployment reloaded WSGI after asset build failure"
     rm -rf "$case_dir"
     echo "PASS: npm build failure aborts before Django operations"
+}
+
+test_successful_deployment_removes_node_modules_before_reload() {
+    setup_case
+    make_command "$bin/find" 'exit 0'
+    mkdir -p "$repository/node_modules"
+    printf '%s\n' installed > "$repository/node_modules/marker"
+
+    run_deploy
+
+    [[ $status == 0 ]] || fail "successful cleanup deployment returned $status: $output"
+    [[ ! -e "$repository/node_modules" ]] \
+        || fail "successful deployment left node_modules in place"
+    [[ -e "$repository/wsgi.py.reloaded" ]] \
+        || fail "successful deployment did not reload WSGI"
+    rm -rf "$case_dir"
+    echo "PASS: successful deployment removes node_modules before reload"
+}
+
+test_collectstatic_failure_preserves_node_modules() {
+    setup_case
+    make_command "$bin/find" 'exit 0'
+    mkdir -p "$repository/node_modules"
+    printf '%s\n' installed > "$repository/node_modules/marker"
+
+    COLLECTSTATIC_EXIT=50 run_deploy
+
+    [[ $status == 50 ]] || fail "collectstatic failure returned $status: $output"
+    [[ -e "$repository/node_modules/marker" ]] \
+        || fail "collectstatic failure removed node_modules"
+    [[ ! -e "$repository/wsgi.py.reloaded" ]] \
+        || fail "deployment reloaded WSGI after collectstatic failure"
+    rm -rf "$case_dir"
+    echo "PASS: collectstatic failure preserves node_modules and skips reload"
+}
+
+test_node_modules_cleanup_failure_aborts_before_reload() {
+    setup_case
+    make_command "$bin/find" 'exit 0'
+    mkdir -p "$repository/node_modules"
+    printf '%s\n' installed > "$repository/node_modules/marker"
+
+    NODE_CLEANUP_EXIT=51 run_deploy
+
+    [[ $status == 51 ]] || fail "node_modules cleanup failure returned $status: $output"
+    [[ -e "$repository/node_modules/marker" ]] \
+        || fail "failed cleanup unexpectedly removed node_modules"
+    [[ ! -e "$repository/wsgi.py.reloaded" ]] \
+        || fail "deployment reloaded WSGI after cleanup failure"
+    rm -rf "$case_dir"
+    echo "PASS: node_modules cleanup failure aborts before reload"
 }
 
 case ${1:-all} in
@@ -219,6 +284,9 @@ case ${1:-all} in
     retention-scope) test_retention_stays_at_backup_root ;;
     nvm-install) test_nvm_install_failure_aborts_before_npm_and_django ;;
     npm-build) test_npm_build_failure_aborts_before_django_operations ;;
+    cleanup-success) test_successful_deployment_removes_node_modules_before_reload ;;
+    collectstatic) test_collectstatic_failure_preserves_node_modules ;;
+    cleanup-failure) test_node_modules_cleanup_failure_aborts_before_reload ;;
     all)
         test_git_status_failure_aborts
         test_retention_pipeline_failure_aborts find 43
@@ -230,6 +298,9 @@ case ${1:-all} in
         test_retention_stays_at_backup_root
         test_nvm_install_failure_aborts_before_npm_and_django
         test_npm_build_failure_aborts_before_django_operations
+        test_successful_deployment_removes_node_modules_before_reload
+        test_collectstatic_failure_preserves_node_modules
+        test_node_modules_cleanup_failure_aborts_before_reload
         ;;
     *) fail "unknown test: $1" ;;
 esac

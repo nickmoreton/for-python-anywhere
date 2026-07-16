@@ -57,17 +57,21 @@ deploy_nvm_line=$(rg -n '^source "\$NVM_DIR/nvm\.sh"$' scripts/deploy.sh | cut -
 deploy_nvm_install_line=$(rg -n '^nvm install$' scripts/deploy.sh | cut -d: -f1)
 deploy_ci_line=$(rg -n '^npm ci$' scripts/deploy.sh | cut -d: -f1)
 deploy_build_line=$(rg -n '^npm run build$' scripts/deploy.sh | cut -d: -f1)
+deploy_check_line=$(rg -n '^uv run python manage\.py check ' scripts/deploy.sh | cut -d: -f1)
 deploy_migrate_line=$(rg -n '^uv run python manage\.py migrate ' scripts/deploy.sh | cut -d: -f1)
 deploy_collectstatic_line=$(rg -n '^uv run python manage\.py collectstatic ' scripts/deploy.sh | cut -d: -f1)
+deploy_cleanup_line=$(rg -n '^rm -rf -- node_modules$' scripts/deploy.sh | cut -d: -f1)
 deploy_reload_line=$(rg -n '^touch "\$wsgi_file"$' scripts/deploy.sh | cut -d: -f1)
 
 (( deploy_nvm_line < deploy_nvm_install_line \
     && deploy_nvm_install_line < deploy_ci_line \
     && deploy_ci_line < deploy_build_line \
-    && deploy_build_line < deploy_migrate_line \
-    && deploy_build_line < deploy_collectstatic_line \
-    && deploy_build_line < deploy_reload_line )) \
-    || fail "frontend build is not ordered before Django mutation and reload"
+    && deploy_build_line < deploy_check_line \
+    && deploy_check_line < deploy_migrate_line \
+    && deploy_migrate_line < deploy_collectstatic_line \
+    && deploy_collectstatic_line < deploy_cleanup_line \
+    && deploy_cleanup_line < deploy_reload_line )) \
+    || fail "frontend build, Django operations, cleanup, and reload are incorrectly ordered"
 
 rg -q 'git clone --depth 1 https://github\.com/nvm-sh/nvm\.git "\$HOME/nvm"' docs/pythonanywhere.md \
     || fail "runbook does not document NVM installation"
@@ -79,5 +83,36 @@ rg -q '^npm ci$' docs/pythonanywhere.md \
     || fail "runbook does not install locked frontend dependencies"
 rg -q '^npm run build$' docs/pythonanywhere.md \
     || fail "runbook does not build initial frontend assets"
+
+initial_setup_block=$(
+    sed -n \
+        '/^Apply the initial database and static setup:/,/^Create a manual-configuration PythonAnywhere WSGI web app/p' \
+        docs/pythonanywhere.md
+)
+setup_check_line=$(rg -n '^uv run python manage.py check ' <<< "$initial_setup_block" | cut -d: -f1) \
+    || fail "runbook initial setup does not run the deployment check"
+setup_migrate_line=$(rg -n '^uv run python manage.py migrate ' <<< "$initial_setup_block" | cut -d: -f1) \
+    || fail "runbook initial setup does not run migrations"
+setup_ci_line=$(rg -n '^npm ci$' <<< "$initial_setup_block" | cut -d: -f1) \
+    || fail "runbook initial setup does not install locked frontend dependencies"
+setup_build_line=$(rg -n '^npm run build$' <<< "$initial_setup_block" | cut -d: -f1) \
+    || fail "runbook initial setup does not build frontend assets"
+setup_collectstatic_line=$(rg -n '^uv run python manage.py collectstatic ' <<< "$initial_setup_block" | cut -d: -f1) \
+    || fail "runbook initial setup does not collect static files"
+setup_cleanup_line=$(rg -n '^rm -rf -- node_modules$' <<< "$initial_setup_block" | cut -d: -f1) \
+    || fail "runbook initial setup does not remove node_modules"
+setup_superuser_line=$(rg -n '^uv run python manage.py createsuperuser ' <<< "$initial_setup_block" | cut -d: -f1) \
+    || fail "runbook initial setup does not create the superuser"
+
+(( setup_check_line < setup_migrate_line \
+    && setup_migrate_line < setup_ci_line \
+    && setup_ci_line < setup_build_line \
+    && setup_build_line < setup_collectstatic_line \
+    && setup_collectstatic_line < setup_cleanup_line \
+    && setup_cleanup_line < setup_superuser_line )) \
+    || fail "runbook initial database, asset, cleanup, and superuser steps are incorrectly ordered"
+
+rg -q 'removes `node_modules` immediately before reloading WSGI' AGENTS.md \
+    || fail "repository guide does not document PythonAnywhere Node cleanup"
 
 echo "PASS: deployment static invariants"

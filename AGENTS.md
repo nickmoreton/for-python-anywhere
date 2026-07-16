@@ -89,7 +89,7 @@ The Docker image installs Python dependencies directly from `pyproject.toml` and
 
 PythonAnywhere runs the project directly from its UV-managed `.venv`; Docker is not used on the host. Production deployment is manually triggered by the `Deploy to PythonAnywhere` GitHub Actions workflow. The workflow validates `main` against MySQL, records its exact commit SHA, connects over SSH with a strictly verified known host, runs `scripts/deploy.sh`, reloads the WSGI app, and verifies the public URL.
 
-During deployment, the remote script sources NVM from `$HOME/nvm`, installs locked frontend dependencies with `npm ci`, runs `npm run build`, and then collects the generated files with Django. Node is a build tool only and does not serve the website. See `docs/pythonanywhere.md` for bootstrap, GitHub variables and secrets, deployment operation, and recovery.
+During deployment, the remote script sources NVM from `$HOME/nvm`, installs locked frontend dependencies with `npm ci`, runs `npm run build`, completes the Django deployment operations, removes `node_modules` immediately before reloading WSGI, and then verifies the public site through the workflow. Node is a build tool only and does not serve the website. See `docs/pythonanywhere.md` for bootstrap, GitHub variables and secrets, deployment operation, and recovery.
 
 ## Maintaining This Guide
 
