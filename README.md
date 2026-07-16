@@ -43,7 +43,7 @@ uv run python manage.py migrate
 uv run python manage.py runserver
 ```
 
-Dependencies are installed from `pyproject.toml` and `uv.lock`; this project does not use `requirements.txt`.
+Dependencies are installed from `pyproject.toml` and `uv.lock`.
 
 ## PythonAnywhere deployment
 
