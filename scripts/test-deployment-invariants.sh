@@ -52,16 +52,20 @@ rg -q '^source "\$NVM_DIR/nvm\.sh"$' scripts/deploy.sh \
 deploy_nvm_line=$(rg -n '^source "\$NVM_DIR/nvm\.sh"$' scripts/deploy.sh | cut -d: -f1)
 deploy_ci_line=$(rg -n '^npm ci$' scripts/deploy.sh | cut -d: -f1)
 deploy_build_line=$(rg -n '^npm run build$' scripts/deploy.sh | cut -d: -f1)
+deploy_check_line=$(rg -n '^uv run python manage\.py check ' scripts/deploy.sh | cut -d: -f1)
 deploy_migrate_line=$(rg -n '^uv run python manage\.py migrate ' scripts/deploy.sh | cut -d: -f1)
 deploy_collectstatic_line=$(rg -n '^uv run python manage\.py collectstatic ' scripts/deploy.sh | cut -d: -f1)
+deploy_cleanup_line=$(rg -n '^rm -rf -- node_modules$' scripts/deploy.sh | cut -d: -f1)
 deploy_reload_line=$(rg -n '^touch "\$wsgi_file"$' scripts/deploy.sh | cut -d: -f1)
 
 (( deploy_nvm_line < deploy_ci_line \
     && deploy_ci_line < deploy_build_line \
-    && deploy_build_line < deploy_migrate_line \
-    && deploy_build_line < deploy_collectstatic_line \
-    && deploy_build_line < deploy_reload_line )) \
-    || fail "frontend build is not ordered before Django mutation and reload"
+    && deploy_build_line < deploy_check_line \
+    && deploy_check_line < deploy_migrate_line \
+    && deploy_migrate_line < deploy_collectstatic_line \
+    && deploy_collectstatic_line < deploy_cleanup_line \
+    && deploy_cleanup_line < deploy_reload_line )) \
+    || fail "frontend build, Django operations, cleanup, and reload are incorrectly ordered"
 
 rg -q 'git clone --depth 1 https://github\.com/nvm-sh/nvm\.git "\$HOME/nvm"' docs/pythonanywhere.md \
     || fail "runbook does not document NVM installation"
