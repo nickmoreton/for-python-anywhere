@@ -8,5 +8,6 @@ dependencies = [
     "django-environ>=0.12,<0.13",
     "gunicorn==25.1.0",
     "mysqlclient>=2.2,<3",
+    "psutil>=7,<8",
     "wagtail>=7.4.2,<7.5",
 ]
