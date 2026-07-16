@@ -128,8 +128,11 @@ uv run python manage.py migrate --noinput --settings=app.settings.production
 npm ci
 npm run build
 uv run python manage.py collectstatic --noinput --clear --settings=app.settings.production
+rm -rf -- node_modules
 uv run python manage.py createsuperuser --settings=app.settings.production
 ```
+
+The final cleanup removes build-only Node dependencies after static files have been collected. If an earlier command fails, `node_modules` remains available for diagnosis; rerun `npm ci` before retrying the build.
 
 Create a manual-configuration PythonAnywhere WSGI web app using Python 3.13. Set its source directory to the output of `echo "$HOME/for-python-anywhere"` and its virtualenv to the output of `echo "$HOME/for-python-anywhere/.venv"`.
 

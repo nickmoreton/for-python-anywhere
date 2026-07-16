@@ -76,4 +76,35 @@ rg -q '^npm ci$' docs/pythonanywhere.md \
 rg -q '^npm run build$' docs/pythonanywhere.md \
     || fail "runbook does not build initial frontend assets"
 
+initial_setup_block=$(
+    sed -n \
+        '/^Apply the initial database and static setup:/,/^Create a manual-configuration PythonAnywhere WSGI web app/p' \
+        docs/pythonanywhere.md
+)
+setup_check_line=$(rg -n '^uv run python manage.py check ' <<< "$initial_setup_block" | cut -d: -f1) \
+    || fail "runbook initial setup does not run the deployment check"
+setup_migrate_line=$(rg -n '^uv run python manage.py migrate ' <<< "$initial_setup_block" | cut -d: -f1) \
+    || fail "runbook initial setup does not run migrations"
+setup_ci_line=$(rg -n '^npm ci$' <<< "$initial_setup_block" | cut -d: -f1) \
+    || fail "runbook initial setup does not install locked frontend dependencies"
+setup_build_line=$(rg -n '^npm run build$' <<< "$initial_setup_block" | cut -d: -f1) \
+    || fail "runbook initial setup does not build frontend assets"
+setup_collectstatic_line=$(rg -n '^uv run python manage.py collectstatic ' <<< "$initial_setup_block" | cut -d: -f1) \
+    || fail "runbook initial setup does not collect static files"
+setup_cleanup_line=$(rg -n '^rm -rf -- node_modules$' <<< "$initial_setup_block" | cut -d: -f1) \
+    || fail "runbook initial setup does not remove node_modules"
+setup_superuser_line=$(rg -n '^uv run python manage.py createsuperuser ' <<< "$initial_setup_block" | cut -d: -f1) \
+    || fail "runbook initial setup does not create the superuser"
+
+(( setup_check_line < setup_migrate_line \
+    && setup_migrate_line < setup_ci_line \
+    && setup_ci_line < setup_build_line \
+    && setup_build_line < setup_collectstatic_line \
+    && setup_collectstatic_line < setup_cleanup_line \
+    && setup_cleanup_line < setup_superuser_line )) \
+    || fail "runbook initial database, asset, cleanup, and superuser steps are incorrectly ordered"
+
+rg -q 'removes `node_modules` immediately before reloading WSGI' AGENTS.md \
+    || fail "repository guide does not document PythonAnywhere Node cleanup"
+
 echo "PASS: deployment static invariants"
