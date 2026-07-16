@@ -1,4 +1,5 @@
 .env
+.deployed-commit
 .git
 .superpowers/
 .venv

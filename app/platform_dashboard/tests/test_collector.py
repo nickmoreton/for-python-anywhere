@@ -1,4 +1,6 @@
 from datetime import datetime
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from types import SimpleNamespace
 from unittest.mock import Mock, call, patch
 
@@ -51,7 +53,10 @@ class PlatformCollectorTests(SimpleTestCase):
     @patch("app.platform_dashboard.collector.psutil.Process")
     @patch("app.platform_dashboard.collector.psutil.disk_usage")
     @patch("app.platform_dashboard.collector.psutil.virtual_memory")
-    @patch("app.platform_dashboard.collector.psutil.cpu_percent", return_value=12.5)
+    @patch(
+        "app.platform_dashboard.collector.psutil.getloadavg",
+        return_value=(1.5, 1.25, 1.0),
+    )
     @patch(
         "app.platform_dashboard.collector.psutil.cpu_count",
         side_effect=(4, 8),
@@ -74,7 +79,7 @@ class PlatformCollectorTests(SimpleTestCase):
         _release,
         _machine,
         cpu_count,
-        _cpu_percent,
+        _load_average,
         virtual_memory,
         disk_usage,
         process_class,
@@ -117,7 +122,10 @@ class PlatformCollectorTests(SimpleTestCase):
         self.assertEqual(infrastructure["Architecture"], "x86_64")
         self.assertEqual(infrastructure["Physical CPU cores"], "4")
         self.assertEqual(infrastructure["Logical CPU cores"], "8")
-        self.assertEqual(infrastructure["CPU utilization"], "12.5%")
+        self.assertEqual(
+            infrastructure["CPU load average (1 / 5 / 15 min)"],
+            "1.50 / 1.25 / 1.00",
+        )
         self.assertEqual(
             infrastructure["Memory"],
             "8.0 GiB total · 3.0 GiB used · 5.0 GiB available · 37.5% used",
@@ -196,3 +204,32 @@ class PlatformCollectorTests(SimpleTestCase):
             text=True,
             timeout=1,
         )
+
+    @patch("app.platform_dashboard.collector.subprocess.run")
+    def test_git_lookup_prefers_revision_published_by_deployment(self, run):
+        run.side_effect = AssertionError("git should not run in a deployed worker")
+
+        with TemporaryDirectory() as temporary_directory:
+            revision_file = Path(temporary_directory) / ".deployed-commit"
+            revision_file.write_text(
+                "0123456789abcdef0123456789abcdef01234567\n",
+                encoding="utf-8",
+            )
+            with self.settings(BASE_DIR=Path(temporary_directory)):
+                commit = _git_commit()
+
+        self.assertEqual(commit, "0123456")
+        run.assert_not_called()
+
+    @patch("app.platform_dashboard.collector.subprocess.run")
+    def test_git_lookup_falls_back_when_revision_encoding_is_invalid(self, run):
+        run.return_value.stdout = "abc1234\n"
+
+        with TemporaryDirectory() as temporary_directory:
+            revision_file = Path(temporary_directory) / ".deployed-commit"
+            revision_file.write_bytes(b"\xff\xfe")
+            with self.settings(BASE_DIR=Path(temporary_directory)):
+                commit = _git_commit()
+
+        self.assertEqual(commit, "abc1234")
+        run.assert_called_once()

@@ -12,7 +12,7 @@ This is a Wagtail site built on Django. Run project commands from the repository
 - `app/urls.py` wires Django admin, Wagtail admin, documents, search, and page-serving routes. `app/wsgi.py` exposes the deployment entry point.
 - `media/` contains local uploaded files, while collected static output is generated under `staticfiles/`. Both are ignored by Git.
 - `compose.yaml` runs the local Wagtail and MySQL services; `.env.example` documents their shared configuration.
-- `scripts/start-dev.sh` starts the Compose web service, `scripts/init-db.sh` grants its MySQL user test-database access on first initialization, and `scripts/deploy.sh` performs guarded PythonAnywhere deployments.
+- `scripts/start-dev.sh` starts the Compose web service, `scripts/init-db.sh` grants its MySQL user test-database access on first initialization, and `scripts/deploy.sh` performs guarded PythonAnywhere deployments and atomically publishes the deployed Git revision for the admin Platform dashboard.
 - `.github/workflows/deploy.yml` validates and manually deploys `main` to PythonAnywhere at the exact validated commit.
 
 ## Frontend Assets

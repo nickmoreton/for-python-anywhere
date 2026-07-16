@@ -16,6 +16,7 @@ media/
 
 # Environment and generated static files
 .env
+.deployed-commit
 staticfiles/
 
 # Node dependencies and generated frontend assets

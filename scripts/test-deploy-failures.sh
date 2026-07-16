@@ -239,6 +239,23 @@ test_successful_deployment_removes_node_modules_before_reload() {
     echo "PASS: successful deployment removes node_modules before reload"
 }
 
+test_successful_deployment_publishes_revision_before_reload() {
+    setup_case
+    make_command "$bin/find" 'exit 0'
+
+    run_deploy
+
+    [[ $status == 0 ]] || fail "successful revision deployment returned $status: $output"
+    [[ -f "$repository/.deployed-commit" ]] \
+        || fail "successful deployment did not publish its revision"
+    [[ $(<"$repository/.deployed-commit") == "$expected_commit" ]] \
+        || fail "deployment published the wrong revision"
+    [[ -e "$repository/wsgi.py.reloaded" ]] \
+        || fail "deployment did not reload WSGI after publishing its revision"
+    rm -rf "$case_dir"
+    echo "PASS: successful deployment publishes revision before reload"
+}
+
 test_collectstatic_failure_preserves_node_modules() {
     setup_case
     make_command "$bin/find" 'exit 0'
@@ -285,6 +302,7 @@ case ${1:-all} in
     nvm-install) test_nvm_install_failure_aborts_before_npm_and_django ;;
     npm-build) test_npm_build_failure_aborts_before_django_operations ;;
     cleanup-success) test_successful_deployment_removes_node_modules_before_reload ;;
+    revision-success) test_successful_deployment_publishes_revision_before_reload ;;
     collectstatic) test_collectstatic_failure_preserves_node_modules ;;
     cleanup-failure) test_node_modules_cleanup_failure_aborts_before_reload ;;
     all)
@@ -299,6 +317,7 @@ case ${1:-all} in
         test_nvm_install_failure_aborts_before_npm_and_django
         test_npm_build_failure_aborts_before_django_operations
         test_successful_deployment_removes_node_modules_before_reload
+        test_successful_deployment_publishes_revision_before_reload
         test_collectstatic_failure_preserves_node_modules
         test_node_modules_cleanup_failure_aborts_before_reload
         ;;
