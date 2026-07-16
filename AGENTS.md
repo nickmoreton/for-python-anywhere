@@ -5,7 +5,8 @@
 This is a Wagtail site built on Django. Run project commands from the repository root, where `manage.py` lives.
 
 - `app/settings/` contains shared, development, and production settings. `manage.py` defaults to `app.settings.dev`; pass `--settings=app.settings.production` when explicitly checking production configuration.
-- `app/home/` defines the `HomePage`, its migrations, templates, app-specific static files, and the current test suite.
+- `app/home/` defines the `HomePage`, its migrations, templates, app-specific static files, and public-page tests.
+- `app/platform_dashboard/` defines the superuser-only Wagtail Platform dashboard, its runtime metric collector, admin hooks and template, and its tests.
 - `app/search/` contains the search view and template.
 - `app/templates/` holds site-wide templates. Sass and vanilla JavaScript sources live under `assets/`; npm builds ignored outputs at `app/static/css/app.css` and `app/static/js/app.js` for Django to serve.
 - `app/urls.py` wires Django admin, Wagtail admin, documents, search, and page-serving routes. `app/wsgi.py` exposes the deployment entry point.
