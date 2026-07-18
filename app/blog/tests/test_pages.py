@@ -63,6 +63,7 @@ class BlogPageRenderingTests(WagtailPageTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "blog/blog_index_page.html")
         self.assertContains(response, "Stories are taking shape")
+        self.assertContains(response, 'class="blog-shell"')
 
     def test_post_renders_all_supported_blocks(self):
         post = self.create_post()
@@ -73,6 +74,12 @@ class BlogPageRenderingTests(WagtailPageTestCase):
         self.assertContains(response, "18 July 2026")
         self.assertContains(response, "Morgan Finch")
         self.assertContains(response, "Compose with blocks")
+        self.assertContains(response, 'class="article-shell"')
+        self.assertContains(response, 'class="article__body"')
+        self.assertContains(
+            response,
+            'class="article-block article-block--code"',
+        )
         self.assertContains(
             response,
             '<ul class="article-block article-block--list">',
@@ -91,5 +98,6 @@ class BlogPageRenderingTests(WagtailPageTestCase):
         response = self.client.get(self.blog_index.url)
 
         self.assertContains(response, "blog-card")
+        self.assertContains(response, 'class="blog-grid"')
         self.assertContains(response, "Listed post")
         self.assertContains(response, "Visible on the index.")
