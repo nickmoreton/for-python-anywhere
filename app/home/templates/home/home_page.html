@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load wagtailcore_tags %}
 
 {% block body_class %}template-homepage{% endblock %}
 
@@ -11,6 +12,11 @@
         <p class="coming-soon__intro">
             We are carefully preparing this space. Please check back soon.
         </p>
+        {% if blog_page %}
+        <p class="coming-soon__actions">
+            <a class="button-link" href="{% pageurl blog_page %}">Read the blog</a>
+        </p>
+        {% endif %}
         <div class="status">
             <span class="status__dot" aria-hidden="true"></span>
             <span class="status__message" data-status-message>Site preparation in progress</span>

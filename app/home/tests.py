@@ -1,3 +1,5 @@
+from urllib.parse import urlparse
+
 from app.home.models import HomePage
 
 from wagtail.models import Page, Site
@@ -54,3 +56,20 @@ class HomeTests(WagtailPageTestCase):
 
         self.assertNotContains(response, "Welcome to your new Wagtail site!")
         self.assertNotContains(response, "css/welcome_page.css")
+
+    def test_homepage_links_to_live_blog(self):
+        from app.blog.models import BlogIndexPage
+
+        blog = BlogIndexPage(title="Blog", slug="blog")
+        self.homepage.add_child(instance=blog)
+        blog.save_revision().publish()
+
+        response = self.client.get(self.homepage.url)
+
+        self.assertContains(response, "Read the blog")
+        self.assertContains(response, urlparse(blog.url).path)
+
+    def test_homepage_omits_blog_link_without_live_blog(self):
+        response = self.client.get(self.homepage.url)
+
+        self.assertNotContains(response, "Read the blog")

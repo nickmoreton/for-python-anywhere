@@ -6,6 +6,7 @@ This is a Wagtail site built on Django. Run project commands from the repository
 
 - `app/settings/` contains shared, development, and production settings. `manage.py` defaults to `app.settings.dev`; pass `--settings=app.settings.production` when explicitly checking production configuration.
 - `app/home/` defines the `HomePage`, its migrations, templates, app-specific static files, and public-page tests.
+- `app/blog/` defines the Wagtail blog index and post page types, structured article blocks, public templates, tests, deterministic sample content, and the idempotent `populate_blog` management command.
 - `app/platform_dashboard/` defines the superuser-only Wagtail Platform dashboard, its runtime metric collector, admin hooks and template, and its tests.
 - `app/search/` contains the search view and template.
 - `app/templates/` holds site-wide templates. Sass and vanilla JavaScript sources live under `assets/`; npm builds ignored outputs at `app/static/css/app.css` and `app/static/js/app.js` for Django to serve.
@@ -50,6 +51,14 @@ uv run python manage.py test
 uv run python manage.py check
 uv run python manage.py makemigrations --check --dry-run
 ```
+
+Populate or refresh the local sample blog with 20 published, fact-grounded Wagtail posts and deterministic generated artwork:
+
+```bash
+uv run python manage.py populate_blog
+```
+
+The command is rerunnable, makes no network requests, and leaves unrelated editor-created posts untouched.
 
 Run frontend and deployment integration checks with:
 
