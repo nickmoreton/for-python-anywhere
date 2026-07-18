@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% load wagtailcore_tags wagtailimages_tags %}
+
+{% block body_class %}template-blogpostpage{% endblock %}
+
+{% block content %}
+<main class="article-shell">
+    <article class="article">
+        <header class="article__header">
+            <a class="article__back" href="{% pageurl page.get_parent %}">Back to {{ page.get_parent.title }}</a>
+            <p class="article__meta">
+                <time datetime="{{ page.date|date:'Y-m-d' }}">{{ page.date|date:"j F Y" }}</time>
+                · {{ page.author_name }}
+            </p>
+            <h1>{{ page.title }}</h1>
+            <p class="article__intro">{{ page.intro }}</p>
+        </header>
+        {% if page.featured_image %}
+        <figure class="article__hero">
+            {% image page.featured_image width-1200 loading="eager" alt="" %}
+        </figure>
+        {% endif %}
+        <div class="article__body">
+            {% for block in page.body %}
+                {% include_block block %}
+            {% endfor %}
+        </div>
+    </article>
+</main>
+{% endblock content %}

@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% load wagtailcore_tags wagtailimages_tags %}
+
+{% block body_class %}template-blogindexpage{% endblock %}
+
+{% block content %}
+<main class="blog-shell">
+    <header class="blog-masthead">
+        <a class="blog-masthead__brand" href="{% pageurl page.get_parent %}">{{ page.get_parent.title }}</a>
+        <p class="blog-masthead__eyebrow">Notes from the build</p>
+        <h1>{{ page.title }}</h1>
+        <p class="blog-masthead__intro">
+            Practical stories about Wagtail, thoughtful publishing, and the web.
+        </p>
+    </header>
+
+    {% if posts %}
+    <section class="blog-grid" aria-label="Blog posts">
+        {% for post in posts %}
+        <article class="blog-card">
+            <a class="blog-card__image-link" href="{% pageurl post %}" tabindex="-1" aria-hidden="true">
+                {% if post.featured_image %}
+                    {% image post.featured_image fill-720x432 loading="lazy" class="blog-card__image" alt="" %}
+                {% else %}
+                    <span class="blog-card__image blog-card__image--fallback"></span>
+                {% endif %}
+            </a>
+            <div class="blog-card__body">
+                <p class="blog-card__meta">
+                    <time datetime="{{ post.date|date:'Y-m-d' }}">{{ post.date|date:"j F Y" }}</time>
+                    · {{ post.author_name }}
+                </p>
+                <h2><a href="{% pageurl post %}">{{ post.title }}</a></h2>
+                <p>{{ post.intro }}</p>
+            </div>
+        </article>
+        {% endfor %}
+    </section>
+    {% else %}
+    <section class="blog-empty" aria-labelledby="blog-empty-title">
+        <p class="blog-empty__eyebrow">Please check back soon</p>
+        <h2 id="blog-empty-title">Stories are taking shape</h2>
+        <p>The first article is still being carefully prepared.</p>
+    </section>
+    {% endif %}
+</main>
+{% endblock content %}
