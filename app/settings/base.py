@@ -38,6 +38,7 @@ CSRF_TRUSTED_ORIGINS = env("DJANGO_CSRF_TRUSTED_ORIGINS")
 INSTALLED_APPS = [
     "app.platform_dashboard",
     "app.home",
+    "app.blog",
     "app.search",
     "wagtail.contrib.forms",
     "wagtail.contrib.redirects",
