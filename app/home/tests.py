@@ -1,9 +1,30 @@
 from urllib.parse import urlparse
 
+from django.db import models
+from wagtail.admin.panels import FieldPanel
+
+from app.blog.models import BlogPostPage
 from app.home.models import HomePage
 
 from wagtail.models import Page, Site
 from wagtail.test.utils import WagtailPageTestCase
+
+
+class HomePageModelTests(WagtailPageTestCase):
+    def test_featured_post_is_an_optional_blog_post_chooser(self):
+        field = HomePage._meta.get_field("featured_post")
+
+        self.assertIs(field.remote_field.model, BlogPostPage)
+        self.assertTrue(field.null)
+        self.assertTrue(field.blank)
+        self.assertEqual(field.remote_field.on_delete, models.SET_NULL)
+        self.assertTrue(
+            any(
+                isinstance(panel, FieldPanel)
+                and panel.field_name == "featured_post"
+                for panel in HomePage.content_panels
+            )
+        )
 
 
 class HomeSetUpTests(WagtailPageTestCase):
