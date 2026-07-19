@@ -16,10 +16,30 @@ class HomePage(Page):
     content_panels = Page.content_panels + [FieldPanel("featured_post")]
 
     def get_context(self, request, *args, **kwargs):
-        from app.blog.models import BlogIndexPage
+        from app.blog.models import BlogIndexPage, BlogPostPage
 
         context = super().get_context(request, *args, **kwargs)
-        context["blog_page"] = (
+        blog_page = (
             BlogIndexPage.objects.child_of(self).live().public().first()
+        )
+        featured_post = None
+        latest_posts = BlogPostPage.objects.none()
+
+        if blog_page:
+            eligible_posts = blog_page.get_posts()
+            if self.featured_post_id:
+                featured_post = eligible_posts.filter(
+                    pk=self.featured_post_id
+                ).first()
+            latest_posts = eligible_posts.exclude(
+                pk=self.featured_post_id
+            )[:3]
+
+        context.update(
+            {
+                "blog_page": blog_page,
+                "featured_post": featured_post,
+                "latest_posts": latest_posts,
+            }
         )
         return context
