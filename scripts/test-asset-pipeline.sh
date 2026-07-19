@@ -13,6 +13,44 @@ fail() {
 [[ $(<.nvmrc) == 24.18.0 ]] || fail ".nvmrc does not pin Node 24.18.0"
 [[ -f package-lock.json ]] || fail "package-lock.json is missing"
 [[ -f assets/scss/app.scss ]] || fail "Sass entry point is missing"
+expected_sass_modules=(
+    assets/scss/abstracts/_tokens.scss
+    assets/scss/abstracts/_mixins.scss
+    assets/scss/base/_global.scss
+    assets/scss/base/_motion.scss
+    assets/scss/components/_button.scss
+    assets/scss/components/_status.scss
+    assets/scss/pages/_home.scss
+    assets/scss/pages/_blog-index.scss
+    assets/scss/pages/_blog-post.scss
+)
+
+for module in "${expected_sass_modules[@]}"; do
+    [[ -f "$module" ]] || fail "Sass module is missing: $module"
+done
+
+expected_sass_uses=(
+    '@use "abstracts/tokens";'
+    '@use "abstracts/mixins";'
+    '@use "base/global";'
+    '@use "components/button";'
+    '@use "components/status";'
+    '@use "pages/home";'
+    '@use "pages/blog-index";'
+    '@use "pages/blog-post";'
+    '@use "base/motion";'
+)
+
+for use_statement in "${expected_sass_uses[@]}"; do
+    grep -Fxq "$use_statement" assets/scss/app.scss \
+        || fail "Sass manifest is missing: $use_statement"
+done
+
+[[ $(rg -c '^@use ' assets/scss/app.scss) -eq ${#expected_sass_uses[@]} ]] \
+    || fail "Sass manifest contains unexpected imports"
+if rg -q '[{}]' assets/scss/app.scss; then
+    fail "Sass manifest must not emit styles directly"
+fi
 [[ -f assets/js/app.js ]] || fail "JavaScript entry point is missing"
 
 node <<'NODE'
@@ -55,6 +93,10 @@ rg -q 'Node 24\.18\.0' AGENTS.md || fail "AGENTS.md does not document the Node v
 rg -q 'npm ci' AGENTS.md || fail "AGENTS.md does not document locked npm installation"
 rg -q 'npm run dev' AGENTS.md || fail "AGENTS.md does not document the watch workflow"
 rg -q 'npm run build' AGENTS.md || fail "AGENTS.md does not document the production build"
+rg -q '`assets/scss/app\.scss` is the Sass manifest' AGENTS.md \
+    || fail "AGENTS.md does not document the Sass manifest"
+rg -q '`abstracts/`.*`base/`.*`components/`.*`pages/`' AGENTS.md \
+    || fail "AGENTS.md does not document the Sass module directories"
 rg -q 'The `assets` service runs `npm run dev` automatically' AGENTS.md \
     || fail "AGENTS.md does not document automatic Compose watching"
 

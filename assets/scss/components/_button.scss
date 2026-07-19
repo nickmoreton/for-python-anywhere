@@ -1,0 +1,24 @@
+@use "../abstracts/mixins";
+@use "../abstracts/tokens";
+
+.button-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  padding: 0.65rem 1rem;
+  border-radius: 999px;
+  color: tokens.$surface;
+  background: tokens.$accent;
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.button-link:hover {
+  color: tokens.$surface;
+  background: #2b5944;
+}
+
+.button-link:focus-visible {
+  @include mixins.focus-ring;
+}

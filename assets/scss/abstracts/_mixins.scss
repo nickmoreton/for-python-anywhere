@@ -1,0 +1,29 @@
+@use "tokens";
+
+@mixin focus-ring {
+  outline: 0.2rem solid tokens.$accent;
+  outline-offset: 0.22rem;
+}
+
+@mixin uppercase-label($letter-spacing: 0.1em, $font-size: 0.8rem) {
+  font-size: $font-size;
+  font-weight: 700;
+  letter-spacing: $letter-spacing;
+  text-transform: uppercase;
+}
+
+@mixin display-heading {
+  font-weight: 600;
+  letter-spacing: -0.055em;
+  line-height: 0.98;
+}
+
+@mixin supporting-copy {
+  color: tokens.$muted;
+}
+
+@mixin page-shell {
+  width: min(100% - 2.5rem, 76rem);
+  margin-inline: auto;
+  padding-block: clamp(2rem, 6vw, 5rem);
+}

@@ -1,0 +1,45 @@
+@use "../abstracts/tokens";
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-height: 2.5rem;
+  padding: 0.55rem 0.9rem;
+  border: 1px solid tokens.$accent-soft;
+  border-radius: 999px;
+  color: tokens.$accent;
+  background: rgba(tokens.$accent-soft, 0.45);
+  font-size: 0.85rem;
+  font-weight: 650;
+}
+
+.status__dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 0 0 rgba(tokens.$accent, 0.35);
+  animation: status-pulse 2.4s ease-out infinite;
+}
+
+.status__message {
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+
+.status__message.is-changing {
+  opacity: 0;
+  transform: translateY(0.2rem);
+}
+
+@keyframes status-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(tokens.$accent, 0.35);
+  }
+
+  70%,
+  100% {
+    box-shadow: 0 0 0 0.6rem rgba(tokens.$accent, 0);
+  }
+}
