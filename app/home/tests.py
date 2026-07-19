@@ -199,33 +199,90 @@ class HomeTests(WagtailPageTestCase):
         response = self.client.get(self.homepage.url)
         self.assertTemplateUsed(response, "home/home_page.html")
 
-    def test_homepage_renders_placeholder_content(self):
-        response = self.client.get(self.homepage.url)
-
-        self.assertContains(response, "Something new is taking shape")
-        self.assertContains(response, "Site preparation in progress")
-        self.assertContains(response, "Powered by Wagtail")
-        self.assertContains(response, "data-status-message")
-
     def test_homepage_does_not_render_generated_welcome_content(self):
         response = self.client.get(self.homepage.url)
 
         self.assertNotContains(response, "Welcome to your new Wagtail site!")
         self.assertNotContains(response, "css/welcome_page.css")
 
-    def test_homepage_links_to_live_blog(self):
-        from app.blog.models import BlogIndexPage
 
-        blog = BlogIndexPage(title="Blog", slug="blog")
-        self.homepage.add_child(instance=blog)
-        blog.save_revision().publish()
+class HomePageRenderingTests(WagtailPageTestCase):
+    def setUp(self):
+        root_page = Page.get_first_root_node()
+        self.homepage = HomePage(title="Field Notes", slug="render-home")
+        root_page.add_child(instance=self.homepage)
+        Site.objects.create(
+            hostname="homepage-rendering.test",
+            root_page=self.homepage,
+            is_default_site=True,
+        )
+        self.blog = BlogIndexPage(title="Blog", slug="blog")
+        self.homepage.add_child(instance=self.blog)
+        self.blog.save_revision().publish()
+
+    def create_post(self, title, days_ago=0, author="Morgan Finch"):
+        post = BlogPostPage(
+            title=title,
+            slug=slugify(title),
+            date=date(2026, 7, 19) - timedelta(days=days_ago),
+            author_name=author,
+            intro=f"Introduction for {title}.",
+            body=[("paragraph", f"<p>Body for {title}.</p>")],
+        )
+        self.blog.add_child(instance=post)
+        post.save_revision().publish()
+        return post
+
+    def test_homepage_renders_feature_and_three_latest_posts(self):
+        featured = self.create_post("Chosen feature")
+        latest = [
+            self.create_post("Latest one", days_ago=1),
+            self.create_post("Latest two", days_ago=2),
+            self.create_post("Latest three", days_ago=3),
+        ]
+        self.create_post("Not on homepage", days_ago=4)
+        self.homepage.featured_post = featured
+        self.homepage.save()
 
         response = self.client.get(self.homepage.url)
 
-        self.assertContains(response, "Read the blog")
-        self.assertContains(response, urlparse(blog.url).path)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'class="home-shell"')
+        self.assertContains(response, 'class="home-feature"')
+        self.assertContains(response, "Chosen feature")
+        self.assertContains(response, "Introduction for Chosen feature.")
+        self.assertContains(response, "19 July 2026")
+        self.assertContains(response, "Morgan Finch")
+        self.assertContains(response, "home-feature__image--fallback")
+        self.assertContains(response, 'class="home-grid"')
+        for post in latest:
+            self.assertContains(response, post.title)
+        self.assertNotContains(response, "Not on homepage")
+        self.assertContains(response, "View all posts")
+        self.assertContains(response, urlparse(self.blog.url).path)
 
-    def test_homepage_omits_blog_link_without_live_blog(self):
+    def test_homepage_omits_feature_when_none_is_selected(self):
+        self.create_post("Latest only")
+
         response = self.client.get(self.homepage.url)
 
-        self.assertNotContains(response, "Read the blog")
+        self.assertNotContains(response, 'class="home-feature"')
+        self.assertContains(response, "Latest only")
+        self.assertContains(response, 'class="home-latest"')
+
+    def test_homepage_omits_post_sections_without_a_live_blog(self):
+        self.blog.unpublish()
+
+        response = self.client.get(self.homepage.url)
+
+        self.assertNotContains(response, 'class="home-feature"')
+        self.assertNotContains(response, 'class="home-latest"')
+        self.assertNotContains(response, "View all posts")
+
+    def test_homepage_removes_coming_soon_content(self):
+        response = self.client.get(self.homepage.url)
+
+        self.assertNotContains(response, "Something new is taking shape")
+        self.assertNotContains(response, "Site preparation in progress")
+        self.assertNotContains(response, "Powered by Wagtail")
+        self.assertNotContains(response, "data-status-message")
