@@ -1,29 +1,76 @@
 {% extends "base.html" %}
-{% load wagtailcore_tags %}
+{% load wagtailcore_tags wagtailimages_tags %}
 
 {% block body_class %}template-homepage{% endblock %}
 
 {% block content %}
-<main class="coming-soon">
-    <section class="coming-soon__panel" aria-labelledby="coming-soon-title">
-        <p class="coming-soon__brand">{{ page.title }}</p>
-        <p class="coming-soon__eyebrow">A new website</p>
-        <h1 id="coming-soon-title">Something new is taking shape</h1>
-        <p class="coming-soon__intro">
-            We are carefully preparing this space. Please check back soon.
+<main class="home-shell">
+    <header class="home-masthead">
+        <p class="home-masthead__brand">{{ page.title }}</p>
+        <p class="home-masthead__eyebrow">Notes from the build</p>
+        <h1>Thoughtful publishing, built in the open</h1>
+        <p class="home-masthead__intro">
+            Practical stories about Wagtail, thoughtful publishing, and the web.
         </p>
-        {% if blog_page %}
-        <p class="coming-soon__actions">
-            <a class="button-link" href="{% pageurl blog_page %}">Read the blog</a>
-        </p>
-        {% endif %}
-        <div class="status">
-            <span class="status__dot" aria-hidden="true"></span>
-            <span class="status__message" data-status-message>Site preparation in progress</span>
+    </header>
+
+    {% if featured_post %}
+    <article class="home-feature" aria-labelledby="featured-post-title">
+        <a class="home-feature__image-link" href="{% pageurl featured_post %}" tabindex="-1" aria-hidden="true">
+            {% if featured_post.featured_image %}
+                {% image featured_post.featured_image fill-1200x760 loading="eager" class="home-feature__image" alt="" %}
+            {% else %}
+                <span class="home-feature__image home-feature__image--fallback"></span>
+            {% endif %}
+        </a>
+        <div class="home-feature__body">
+            <p class="home-feature__eyebrow">Featured post</p>
+            <p class="home-feature__meta">
+                <time datetime="{{ featured_post.date|date:'Y-m-d' }}">{{ featured_post.date|date:"j F Y" }}</time>
+                · {{ featured_post.author_name }}
+            </p>
+            <h2 id="featured-post-title"><a href="{% pageurl featured_post %}">{{ featured_post.title }}</a></h2>
+            <p class="home-feature__intro">{{ featured_post.intro }}</p>
+            <p class="home-feature__action"><a class="button-link" href="{% pageurl featured_post %}">Read the featured post</a></p>
+        </div>
+    </article>
+    {% endif %}
+
+    {% if latest_posts %}
+    <section class="home-latest" aria-labelledby="latest-posts-title">
+        <div class="home-latest__heading">
+            <div>
+                <p class="home-latest__eyebrow">From the blog</p>
+                <h2 id="latest-posts-title">Latest posts</h2>
+            </div>
+            {% if blog_page %}
+            <a class="home-latest__all" href="{% pageurl blog_page %}">View all posts</a>
+            {% endif %}
+        </div>
+        <div class="home-grid">
+            {% for post in latest_posts %}
+            <article class="home-card">
+                <a class="home-card__image-link" href="{% pageurl post %}" tabindex="-1" aria-hidden="true">
+                    {% if post.featured_image %}
+                        {% image post.featured_image fill-720x432 loading="lazy" class="home-card__image" alt="" %}
+                    {% else %}
+                        <span class="home-card__image home-card__image--fallback"></span>
+                    {% endif %}
+                </a>
+                <div class="home-card__body">
+                    <p class="home-card__meta">
+                        <time datetime="{{ post.date|date:'Y-m-d' }}">{{ post.date|date:"j F Y" }}</time>
+                        · {{ post.author_name }}
+                    </p>
+                    <h3><a href="{% pageurl post %}">{{ post.title }}</a></h3>
+                    <p>{{ post.intro }}</p>
+                </div>
+            </article>
+            {% endfor %}
         </div>
     </section>
-    <footer class="coming-soon__footer">
-        <a href="https://wagtail.org/" rel="noreferrer">Powered by Wagtail</a>
-    </footer>
+    {% elif blog_page %}
+    <p class="home-blog-link"><a class="button-link" href="{% pageurl blog_page %}">View all posts</a></p>
+    {% endif %}
 </main>
 {% endblock content %}
