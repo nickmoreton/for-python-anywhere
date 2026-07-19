@@ -1,0 +1,133 @@
+@use "../abstracts/mixins";
+@use "../abstracts/tokens";
+
+.blog-shell {
+  @include mixins.page-shell;
+}
+
+.blog-masthead {
+  max-width: 52rem;
+  margin-bottom: clamp(2.5rem, 6vw, 5rem);
+}
+
+.blog-masthead a:focus-visible,
+.blog-card a:focus-visible {
+  @include mixins.focus-ring;
+}
+
+.blog-masthead__brand,
+.blog-masthead__eyebrow,
+.blog-empty__eyebrow {
+  @include mixins.uppercase-label;
+}
+
+.blog-masthead__brand {
+  display: inline-block;
+  margin-bottom: clamp(2rem, 6vw, 4rem);
+}
+
+.blog-masthead__eyebrow,
+.blog-empty__eyebrow {
+  margin-bottom: 0.75rem;
+  color: tokens.$accent;
+}
+
+.blog-masthead h1 {
+  @include mixins.display-heading;
+
+  max-width: 14ch;
+  margin: 0 0 1.25rem;
+  font-size: clamp(2.7rem, 8vw, 5.8rem);
+}
+
+.blog-masthead__intro {
+  @include mixins.supporting-copy;
+
+  max-width: 42rem;
+  margin: 0;
+  font-size: clamp(1.05rem, 2vw, 1.3rem);
+}
+
+.blog-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr));
+  gap: 1.5rem;
+}
+
+.blog-card,
+.blog-empty {
+  overflow: hidden;
+  border: 1px solid rgba(tokens.$line, 0.95);
+  border-radius: 1.25rem;
+  background: rgba(tokens.$surface, 0.94);
+  box-shadow: 0 1rem 3rem rgba(tokens.$ink, 0.06);
+}
+
+.blog-card__image-link {
+  display: block;
+  background: tokens.$accent-soft;
+}
+
+.blog-card__image {
+  display: block;
+  width: 100%;
+  aspect-ratio: 5 / 3;
+  object-fit: cover;
+}
+
+.blog-card__image--fallback {
+  background:
+    radial-gradient(
+      circle at 25% 30%,
+      rgba(tokens.$surface, 0.8) 0 8%,
+      transparent 9%
+    ),
+    linear-gradient(135deg, tokens.$accent-soft, rgba(tokens.$accent, 0.72));
+}
+
+.blog-card__body {
+  padding: 1.5rem;
+}
+
+.blog-card__meta {
+  margin: 0 0 0.7rem;
+  color: tokens.$muted;
+  font-size: 0.78rem;
+}
+
+.blog-card h2 {
+  margin: 0 0 0.75rem;
+  font-size: clamp(1.35rem, 3vw, 1.8rem);
+  line-height: 1.15;
+}
+
+.blog-card h2 a {
+  text-decoration: none;
+}
+
+.blog-card__body > p:last-child,
+.blog-empty > p:last-child {
+  margin-bottom: 0;
+  color: tokens.$muted;
+}
+
+.blog-empty {
+  padding: clamp(2rem, 6vw, 4rem);
+}
+
+.blog-empty h2 {
+  margin: 0 0 0.75rem;
+  font-size: clamp(2rem, 5vw, 3.4rem);
+  line-height: 1.05;
+}
+
+@media (max-width: tokens.$narrow-breakpoint) {
+  .blog-shell {
+    width: min(100% - 1.5rem, 76rem);
+  }
+
+  .blog-card,
+  .blog-empty {
+    border-radius: 1rem;
+  }
+}
