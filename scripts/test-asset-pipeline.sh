@@ -93,6 +93,10 @@ rg -q 'Node 24\.18\.0' AGENTS.md || fail "AGENTS.md does not document the Node v
 rg -q 'npm ci' AGENTS.md || fail "AGENTS.md does not document locked npm installation"
 rg -q 'npm run dev' AGENTS.md || fail "AGENTS.md does not document the watch workflow"
 rg -q 'npm run build' AGENTS.md || fail "AGENTS.md does not document the production build"
+rg -q '`assets/scss/app\.scss` is the Sass manifest' AGENTS.md \
+    || fail "AGENTS.md does not document the Sass manifest"
+rg -q '`abstracts/`.*`base/`.*`components/`.*`pages/`' AGENTS.md \
+    || fail "AGENTS.md does not document the Sass module directories"
 rg -q 'The `assets` service runs `npm run dev` automatically' AGENTS.md \
     || fail "AGENTS.md does not document automatic Compose watching"
 

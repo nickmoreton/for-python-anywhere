@@ -18,7 +18,7 @@ This is a Wagtail site built on Django. Run project commands from the repository
 
 ## Frontend Assets
 
-Frontend tooling uses Node 24.18.0, pinned in `.nvmrc`. Dependency declarations and resolved versions live in `package.json` and `package-lock.json`. Install and build strictly from the lockfile:
+Frontend tooling uses Node 24.18.0, pinned in `.nvmrc`. Dependency declarations and resolved versions live in `package.json` and `package-lock.json`. `assets/scss/app.scss` is the Sass manifest: private tokens and mixins live under `abstracts/`, document defaults under `base/`, reusable selectors under `components/`, and page-owned rules under `pages/`. Vanilla JavaScript remains under `assets/js/`. Install and build strictly from the lockfile:
 
 ```bash
 nvm use
